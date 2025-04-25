@@ -32,8 +32,6 @@ class Avatar(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=False)
-    profile_image = db.Column(db.String(255), nullable=False)
-    hero_image = db.Column(db.String(255), nullable=False)
     
     # Relationships
     users = db.relationship('User', back_populates='avatar', lazy='dynamic')
@@ -49,16 +47,6 @@ class Avatar(db.Model):
         if not description:
             raise ValueError("Description is required")
         return description
-    
-    @hybrid_property
-    def profile_image_url(self):
-        """Returns the full path for the profile image"""
-        return f"static/avatars/profile/{self.profile_image}"
-    
-    @hybrid_property
-    def hero_image_url(self):
-        """Returns the full path for the hero image"""
-        return f"static/avatars/hero/{self.hero_image}"
 
 class User(db.Model):
     """
@@ -69,21 +57,18 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     whatsapp_number = db.Column(db.String(20), nullable=False, unique=True)
-    description = db.Column(db.Text)
     avatar_id = db.Column(db.Integer, db.ForeignKey('avatars.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     avatar = db.relationship('Avatar', back_populates='users')
-    favorites = db.relationship('UserFavorite', back_populates='user', cascade='all, delete-orphan')
-    
+    favorites = db.relationship('UserFavorite', backref='user', lazy='dynamic')
+
     @validates('name')
     def validate_name(self, key, name):
         if not name or len(name) > 100:
             raise ValueError("Name must be between 1 and 100 characters")
         return name
-    
+
     @validates('whatsapp_number')
     def validate_whatsapp_number(self, key, number):
         if not number or len(number) > 20:
@@ -96,10 +81,7 @@ class User(db.Model):
             'id': self.id,
             'name': self.name,
             'whatsapp_number': self.whatsapp_number,
-            'description': self.description,
             'avatar_id': self.avatar_id,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'favorites': [f.to_dict() for f in self.favorites]
         }
 
@@ -112,8 +94,6 @@ class Movie(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     platforms = db.relationship('StreamingPlatform', secondary='movie_platforms', lazy='dynamic',
@@ -135,8 +115,6 @@ class Movie(db.Model):
             'id': self.id,
             'name': self.name,
             'description': self.description,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'platforms': [p.to_dict() for p in self.platforms],
             'categories': [c.to_dict() for c in self.categories]
         }
@@ -153,11 +131,8 @@ class UserFavorite(db.Model):
     comment = db.Column(db.Text)
     rating = db.Column(db.Float)
     watchlist = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    user = db.relationship('User', back_populates='favorites')
     movie = db.relationship('Movie', back_populates='favorites')
     
     @validates('rating')
@@ -174,9 +149,7 @@ class UserFavorite(db.Model):
             'watched': self.watched,
             'comment': self.comment,
             'rating': self.rating,
-            'watchlist': self.watchlist,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'watchlist': self.watchlist
         }
 
 class StreamingPlatform(db.Model):
@@ -187,7 +160,6 @@ class StreamingPlatform(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False, unique=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     @validates('name')
     def validate_name(self, key, name):
@@ -199,8 +171,7 @@ class StreamingPlatform(db.Model):
         """Convert platform object to dictionary."""
         return {
             'id': self.id,
-            'name': self.name,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'name': self.name
         }
 
 class Category(db.Model):
@@ -212,7 +183,6 @@ class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)
     img = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     @validates('name')
     def validate_name(self, key, name):
@@ -233,8 +203,7 @@ class Category(db.Model):
             'id': self.id,
             'name': self.name,
             'img': self.img,
-            'img_url': self.img_url,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'img_url': self.img_url
         }
 
 class MovieOMDB(db.Model):
@@ -259,16 +228,14 @@ class MovieOMDB(db.Model):
     country = db.Column(db.String(50))
     awards = db.Column(db.String(255))
     poster_img = db.Column(db.String(255))
-    imdb_rating = db.Column(db.String(10))
-    rotten_tomatoes = db.Column(db.String(20))
+    imdb_rating = db.Column(db.Float)
+    rotten_tomatoes = db.Column(db.String(10))
     metacritic = db.Column(db.String(10))
     type = db.Column(db.String(20))
     dvd = db.Column(db.String(20))
-    box_office = db.Column(db.String(50))
+    box_office = db.Column(db.String(20))
     production = db.Column(db.String(100))
     website = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     movie = db.relationship('Movie', back_populates='omdb_data')
@@ -307,9 +274,7 @@ class MovieOMDB(db.Model):
             'dvd': self.dvd,
             'box_office': self.box_office,
             'production': self.production,
-            'website': self.website,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'website': self.website
         }
 
 class DataManagerInterface(ABC):

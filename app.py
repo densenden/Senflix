@@ -11,6 +11,8 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
 
+print(f"[DB DEBUG] SQLALCHEMY_DATABASE_URI: {app.config.get('SQLALCHEMY_DATABASE_URI')}")
+
 data_manager = SQLiteDataManager()
 data_manager.init_app(app)
 omdb_manager = OMDBManager(data_manager)
@@ -33,7 +35,7 @@ def require_fields(fields, redirect_endpoint):
         def wrapped(*args, **kwargs):
             missing = [f for f in fields if not request.form.get(f)]
             if missing:
-                flash(f"Bitte ausgefüllt: {', '.join(missing)}", 'error')
+                flash(f"Please fill out: {', '.join(missing)}", 'error')
                 return redirect(url_for(redirect_endpoint))
             return f(*args, **kwargs)
         return wrapped
@@ -52,15 +54,20 @@ def ajax_route(f):
 
 @app.route('/')
 def user_selection():
-    return render_template('user_selection.html', users=data_manager.get_all_users(), available_avatars=Avatar.query.all(), current_user=current_user)
+    users = User.query.all()  # Pass SQLAlchemy objects to Jinja
+    print(f"[DEBUG] users: {users}")
+    available_avatars = Avatar.query.all()
+    print(f"[DEBUG] available_avatars: {available_avatars}")
+    return render_template('user_selection.html', users=users, available_avatars=available_avatars, current_user=current_user)
 
 @app.route('/create_user', methods=['POST'])
-@require_fields(['avatar','description'], 'user_selection')
+@require_fields(['avatar','name','whatsapp_number'], 'user_selection')
 def create_user():
     avatar_id = int(request.form['avatar'])
-    desc = request.form['description']
-    user = data_manager.add_user(name=f"User{datetime.utcnow().timestamp()}", whatsapp_number='', description=desc, avatar_id=avatar_id)
-    flash('Profil erstellt!' if user else 'Fehler beim Erstellen', 'success' if user else 'error')
+    name = request.form['name']
+    whatsapp_number = request.form['whatsapp_number']
+    user = data_manager.add_user(name=name, whatsapp_number=whatsapp_number, avatar_id=avatar_id, description=None)
+    flash('Profile created!' if user else 'Error creating profile', 'success' if user else 'error')
     return redirect(url_for('user_selection'))
 
 @app.route('/select_user/<int:user_id>')
@@ -84,7 +91,7 @@ def movies():
 def movie_detail(movie_id):
     movie = data_manager.get_movie_data(movie_id)
     if not movie:
-        flash('Nicht gefunden', 'error')
+        flash('Not found', 'error')
         return redirect(url_for('movies'))
     return render_template('movie_detail.html', movie=movie)
 
@@ -146,7 +153,7 @@ def users():
 def user_movies(user_id):
     user = data_manager.get_user_data(user_id)
     if not user:
-        flash('User nicht gefunden','error')
+        flash('User not found','error')
         return redirect(url_for('users'))
     return render_template('user_movies.html', user=user)
 
@@ -159,7 +166,7 @@ def add_movie(user_id):
         rating=float(request.form['rating']) if request.form.get('rating') else None
         comment=request.form.get('comment')
         data_manager.upsert_favorite(user_id, mid, watched=watched, rating=rating, comment=comment)
-        flash('Gespeichert','success')
+        flash('Saved','success')
         return redirect(url_for('user_movies', user_id=user_id))
     return render_template('add_movie.html', user_id=user_id, movies=data_manager.get_all_movies())
 
@@ -168,18 +175,18 @@ def add_movie(user_id):
 def update_movie(user_id, movie_id):
     fav = next((f for f in data_manager.get_user_favorites(user_id) if f['movie_id']==movie_id), None)
     if not fav:
-        flash('Nicht in Favoriten','error')
+        flash('Not in favorites','error')
         return redirect(url_for('user_movies', user_id=user_id))
     if request.method=='POST':
         data_manager.upsert_favorite(user_id, movie_id, watched='watched' in request.form, rating=float(request.form.get('rating')) if request.form.get('rating') else None, comment=request.form.get('comment'))
-        flash('Aktualisiert','success')
+        flash('Updated','success')
         return redirect(url_for('user_movies', user_id=user_id))
     return render_template('update_movie.html', user_id=user_id, movie=fav)
 
 @app.route('/users/<int:user_id>/delete_movie/<int:movie_id>', methods=['POST'])
 def delete_movie(user_id, movie_id):
     data_manager.remove_favorite(user_id, movie_id)
-    flash('Entfernt','success')
+    flash('Removed','success')
     return redirect(url_for('user_movies', user_id=user_id))
 
 if __name__=='__main__':

@@ -29,30 +29,33 @@
 <div id="createProfileModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center">
     <div class="bg-gray-900 p-6 rounded-lg max-w-md w-full mx-4">
         <h2 class="text-2xl font-bold mb-6">Create New Profile</h2>
-        
         <form action="{{ url_for('create_user') }}" method="POST" class="space-y-6">
             <!-- Avatar Selection -->
             <div>
                 <label class="block text-sm font-medium mb-2">Select Avatar</label>
                 <div class="grid grid-cols-4 gap-4">
                     {% for avatar in available_avatars %}
-                    <label class="cursor-pointer group">
-                        <input type="radio" name="avatar" value="{{ avatar.id }}" class="hidden peer">
-                        <img src="{{ url_for('static', filename='avatars/profile/' + avatar.profile_image) }}" 
-                             alt="{{ avatar.name }}"
-                             class="w-full aspect-square rounded-lg object-cover ring-2 ring-transparent peer-checked:ring-red-500">
+                    <label class="cursor-pointer group flex flex-col items-center">
+                        <input type="radio" name="avatar" value="{{ avatar.id }}" class="hidden peer" required>
+                        <img src="{{ url_for('static', filename='avatars/profile/' ~ avatar.profile_image) }}"
+                             alt="Avatar" class="w-16 h-16 rounded-full border-2 border-gray-700 group-hover:border-red-500 mb-1">
+                        <span class="text-xs text-gray-300 mt-1">{{ avatar.name }}</span>
                     </label>
                     {% endfor %}
                 </div>
             </div>
-            
-            <!-- Description -->
+            <!-- Name Input -->
             <div>
-                <label for="description" class="block text-sm font-medium mb-2">Description</label>
-                <input type="text" id="description" name="description" required
+                <label for="name" class="block text-sm font-medium mb-2">Name</label>
+                <input type="text" id="name" name="name" required
                        class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-red-500 focus:ring-1 focus:ring-red-500">
             </div>
-            
+            <!-- WhatsApp Number Input -->
+            <div>
+                <label for="whatsapp_number" class="block text-sm font-medium mb-2">WhatsApp Number</label>
+                <input type="text" id="whatsapp_number" name="whatsapp_number" required
+                       class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-red-500 focus:ring-1 focus:ring-red-500">
+            </div>
             <!-- Buttons -->
             <div class="flex justify-end space-x-4">
                 <button type="button" onclick="hideCreateProfileModal()" 

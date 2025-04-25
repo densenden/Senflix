@@ -1,6 +1,7 @@
 from .interface import db, DataManagerInterface, User, Movie, Category, StreamingPlatform, UserFavorite, logger
 from sqlalchemy.exc import SQLAlchemyError
 from typing import Dict, List, Optional, Any
+import os
 
 class SQLiteDataManager(DataManagerInterface):
     def __init__(self):
@@ -10,7 +11,8 @@ class SQLiteDataManager(DataManagerInterface):
     def init_app(self, app):
         # Only set the DB URI if not already set (so tests can override)
         if not app.config.get('SQLALCHEMY_DATABASE_URI'):
-            app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///senflix.db'
+            db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../data/senflix.sqlite'))
+            app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
         app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
         db.init_app(app)
         with app.app_context():
@@ -33,7 +35,7 @@ class SQLiteDataManager(DataManagerInterface):
             return []
 
     def get_all_users(self):
-        return self._all(User)
+        return User.query.all()
 
     def get_user_by_id(self, user_id):
         user = self._get(User, id=user_id)
