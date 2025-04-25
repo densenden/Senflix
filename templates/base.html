@@ -8,34 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-black text-white font-sf">
-    {% from "components/navigation.html" import top_nav, side_nav %}
-    
-    {% if current_user and current_user.is_authenticated %}
-        {{ top_nav() }}
-        {{ side_nav(genres, platforms) }}
-        <div class="ml-64">
-    {% else %}
-        {{ top_nav() }}
-    {% endif %}
-    
-    <div class="container mx-auto px-4 pt-20">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="p-4 mb-4 rounded-lg {% if category == 'error' %}bg-red-800 text-red-200{% else %}bg-green-800 text-green-200{% endif %}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-        
-        {% block content %}{% endblock %}
-    </div>
-    
-    {% if current_user and current_user.is_authenticated %}
-        </div>
-    {% endif %}
-
+    {% block content %}{% endblock %}
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
-</html> 
+</html>

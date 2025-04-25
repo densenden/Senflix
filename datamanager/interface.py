@@ -94,6 +94,22 @@ class User(db.Model):
             'favorites': [f.to_dict() for f in self.favorites]
         }
 
+    # Flask-Login integration for User
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_active(self):
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        return str(self.id)
+
 class Movie(db.Model):
     """
     Represents a movie in the system.
@@ -102,7 +118,6 @@ class Movie(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text)
     
     # Relationships
     platforms = db.relationship('StreamingPlatform', secondary='movie_platforms', lazy='dynamic',
@@ -123,7 +138,7 @@ class Movie(db.Model):
         return {
             'id': self.id,
             'name': self.name,
-            'description': self.description,
+            'plot': self.omdb_data.plot if hasattr(self, 'omdb_data') and self.omdb_data else None,
             'platforms': [p.to_dict() for p in self.platforms],
             'categories': [c.to_dict() for c in self.categories]
         }

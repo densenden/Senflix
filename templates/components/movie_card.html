@@ -1,7 +1,7 @@
 {% macro movie_card(movie) %}
 <div class="movie-card group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer transform-gpu transition-all duration-300 hover:scale-105 hover:z-10">
     <!-- Movie Poster -->
-    <img src="{{ movie.omdb_data.poster_url if movie.omdb_data else url_for('static', filename='images/no-poster.jpg') }}"
+    <img src="{{ movie.omdb_data.poster_url if movie.omdb_data and movie.omdb_data.poster_url else url_for('static', filename='movies/no-poster.jpg') }}"
          alt="{{ movie.title }}"
          class="w-full h-full object-cover">
     
@@ -61,9 +61,9 @@
         <div class="absolute top-2 right-2 flex -space-x-2">
             {% for user in movie.watched_by %}
             <img src="{{ url_for('static', filename='avatars/' + user.avatar + '.jpg') }}"
-                 alt="{{ user.description }}"
-                 class="w-8 h-8 rounded-full border-2 border-gray-800"
-                 title="{{ user.description }}">
+                 alt="{{ user.name }}"
+                 title="{{ user.name }}"
+                 class="w-8 h-8 rounded-full border-2 border-gray-800">
             {% endfor %}
         </div>
     </div>

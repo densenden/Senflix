@@ -66,7 +66,7 @@ def create_user():
     avatar_id = int(request.form['avatar'])
     name = request.form['name']
     whatsapp_number = request.form['whatsapp_number']
-    user = data_manager.add_user(name=name, whatsapp_number=whatsapp_number, avatar_id=avatar_id, description=None)
+    user = data_manager.add_user(name=name, whatsapp_number=whatsapp_number, avatar_id=avatar_id)
     flash('Profile created!' if user else 'Error creating profile', 'success' if user else 'error')
     return redirect(url_for('user_selection'))
 
@@ -81,7 +81,7 @@ def select_user(user_id):
 def movies():
     genre = request.args.get('genre', type=int)
     genres = data_manager.get_all_categories_with_movies()
-    platforms = data_manager.get_all(StreamingPlatform)
+    platforms = data_manager.get_all_platforms()
     if genre:
         return render_template('movies.html', movies=data_manager.get_movies_by_category(genre), genres=genres, platforms=platforms, current_genre=genre)
     return render_template('movies.html', new_releases=data_manager.get_movies_by_category(1), popular_movies=data_manager.get_user_favorites(current_user.id), genres=genres, platforms=platforms)

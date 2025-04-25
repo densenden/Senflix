@@ -41,9 +41,9 @@ class SQLiteDataManager(DataManagerInterface):
         user = self._get(User, id=user_id)
         return user.to_dict() if user else None
 
-    def add_user(self, name: str, whatsapp_number: str, description: Optional[str], avatar_id: Optional[int]):
+    def add_user(self, name: str, whatsapp_number: str, avatar_id: Optional[int]):
         try:
-            u = User(name=name, whatsapp_number=whatsapp_number, description=description, avatar_id=avatar_id)
+            u = User(name=name, whatsapp_number=whatsapp_number, avatar_id=avatar_id)
             db.session.add(u); db.session.commit()
             return u.to_dict()
         except SQLAlchemyError as e:
@@ -115,6 +115,9 @@ class SQLiteDataManager(DataManagerInterface):
     def get_all_categories_with_movies(self):
         cats = Category.query.all()
         return [dict(**c.to_dict(), movies=self.get_movies_by_category(c.id)) for c in cats]
+
+    def get_all_platforms(self):
+        return self._all(StreamingPlatform)
 
     # Implement abstract methods
     def add_favorite(self, user_id, movie_id, watched=False, comment=None, rating=None, watchlist=False):

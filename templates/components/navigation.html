@@ -3,14 +3,10 @@
     <div class="container mx-auto px-4">
         <div class="flex items-center justify-between h-16">
             <a href="{{ url_for('movies') }}" class="text-2xl font-bold text-red-600">SenFlix</a>
-            
             <div class="flex items-center space-x-4">
                 {% if current_user and current_user.is_authenticated %}
                     <a href="{{ url_for('profile') }}" class="flex items-center space-x-2">
-                        <img src="{{ url_for('static', filename='avatars/profile/' + current_user.avatar.profile_image) }}" 
-                             alt="{{ current_user.avatar.name }}" 
-                             class="w-8 h-8 rounded-full">
-                        <span>{{ current_user.avatar.name }}</span>
+                        <img src="{{ url_for('static', filename=current_user.avatar.profile_image_url) }}" alt="{{ current_user.avatar.name }}" class="w-8 h-8 rounded-full border-2 border-yellow-400">
                     </a>
                     <a href="{{ url_for('logout') }}" class="text-gray-300 hover:text-white">Logout</a>
                 {% else %}

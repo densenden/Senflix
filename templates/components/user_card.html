@@ -1,12 +1,30 @@
 {% macro user_card(user) %}
-<div class="user-card group relative max-w-[360px] w-full flex flex-col items-center rounded-lg overflow-hidden cursor-pointer transform-gpu transition-all duration-300 hover:scale-105 bg-gray-900 border border-gray-700">
-    <!-- User Avatar -->
-    <img src="{{ url_for('static', filename=user.avatar.profile_image_url) }}"
-         alt="{{ user.name }}"
-         class="w-32 h-32 object-cover rounded-full border-4 border-gray-700 mt-6 mb-4 shadow-lg">
-    <!-- User Info -->
-    <div class="flex flex-col items-center justify-center">
-        <h3 class="text-lg font-bold mb-2">{{ user.name }}</h3>
+<a href="{{ url_for('select_user', user_id=user.id) }}" class="block group">
+<div class="user-card group flex flex-col items-center w-full">
+    <div class="relative">
+        <img src="{{ url_for('static', filename=user.avatar.profile_image_url) }}"
+             alt="{{ user.name }}"
+             class="user-3d-img w-20 h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full object-cover bg-gradient-to-br from-gray-800 via-gray-900 to-gray-700 border-0 ring-0 group-hover:scale-108 group-hover:shadow-[0_0_0_2px_#3b82f6] group-hover:border-blue-500 transition-transform duration-300 will-change-transform">
+        <div class="absolute inset-0 rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" style="background: none;"></div>
     </div>
+    <h3 class="mt-4 mb-2 text-lg md:text-xl font-extrabold text-white drop-shadow-lg text-center">{{ user.name }}</h3>
 </div>
+</a>
 {% endmacro %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.user-3d-img').forEach(function(img) {
+        img.addEventListener('mousemove', function(e) {
+            const rect = img.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const rotateY = ((x / rect.width) - 0.5) * 16;
+            const rotateX = ((y / rect.height) - 0.5) * -16;
+            img.style.transform = `scale(1.08) rotateY(${rotateY}deg) rotateX(${rotateX}deg)`;
+        });
+        img.addEventListener('mouseleave', function() {
+            img.style.transform = '';
+        });
+    });
+});
+</script>

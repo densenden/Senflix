@@ -1,83 +1,230 @@
-{% extends "base.html" %}
-{% from "components/user_card.html" import user_card %}
-
-{% block title %}Select Profile - SenFlix{% endblock %}
-
-{% block content %}
-<div class="max-w-4xl mx-auto">
-    <h1 class="text-3xl font-bold mb-8">Who's watching?</h1>
-    
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Profile - SenFlix</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+    /* --- Avatar Modal Selection --- */
+    .avatar-label .avatar-img {
+      border-width: 2px;
+      border-color: transparent;
+      transition: filter 0.2s, border-color 0.2s, box-shadow 0.18s cubic-bezier(.4,1.5,.5,1), transform 0.18s cubic-bezier(.4,1.5,.5,1), opacity 0.2s;
+      filter: brightness(0.5);
+      opacity: 0.7;
+      transform: scale(1);
+    }
+    .avatar-label.selected .avatar-img {
+      filter: brightness(1.2) drop-shadow(0 0 0.25rem #3b82f6);
+      border-color: #3b82f6 !important;
+      opacity: 1;
+      box-shadow: 0 0 0 2px #3b82f6;
+      z-index: 2;
+      transform: scale(1.1);
+      animation: avatar-pop 0.18s cubic-bezier(.4,1.5,.5,1);
+    }
+    @keyframes avatar-pop {
+      0% { transform: scale(1); }
+      70% { transform: scale(1.18); }
+      100% { transform: scale(1.1); }
+    }
+    .avatar-label:hover .avatar-img {
+      filter: brightness(1.1);
+      box-shadow: 0 0 0 2px #3b82f6;
+      opacity: 1;
+      transform: scale(1.08);
+      border-color: #3b82f6 !important;
+    }
+    .avatar-label .custom-tooltip {
+      transition: opacity 0.2s;
+      pointer-events: none;
+      border: 1.5px solid #3b82f6;
+      box-shadow: 0 4px 16px 0 rgba(59,130,246,0.15), 0 1.5px 6px rgba(0,0,0,0.12);
+      position: absolute;
+      left: 50%;
+      top: 105%;
+      transform: translateX(-50%);
+      background: #18181b;
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 0.5rem;
+      opacity: 0;
+      white-space: nowrap;
+      font-size: 0.86rem;
+      z-index: 30;
+      min-width: 120px;
+      max-width: 220px;
+      text-align: center;
+      display: block;
+    }
+    .avatar-label:hover .custom-tooltip, .avatar-label.selected .custom-tooltip {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-content {
+      z-index: 50;
+      position: relative;
+    }
+    /* --- User Selection Grid --- */
+    .user-selection-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 2.5rem 2rem;
+      justify-content: center;
+      max-width: 700px;
+      margin: 0 auto;
+      padding-bottom: 2rem;
+    }
+    .user-card {
+      background: none;
+      box-shadow: none;
+      border: none;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.18s cubic-bezier(.4,1.5,.5,1), box-shadow 0.18s cubic-bezier(.4,1.5,.5,1);
+      cursor: pointer;
+    }
+    .user-card:hover .user-3d-img,
+    .user-card:focus .user-3d-img {
+      transform: scale(1.08);
+      box-shadow: 0 0 0 2px #3b82f6;
+      border-color: #3b82f6 !important;
+    }
+    .user-card .user-3d-img {
+      border-width: 2px;
+      border-color: transparent;
+      transition: box-shadow 0.18s cubic-bezier(.4,1.5,.5,1), border-color 0.18s cubic-bezier(.4,1.5,.5,1), transform 0.18s cubic-bezier(.4,1.5,.5,1);
+      box-shadow: none;
+    }
+    /* Center logo and headline */
+    .senflix-logo-top {
+      display: flex;
+      justify-content: center;
+      margin-top: 2.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .headline-centered {
+      text-align: center;
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 2.5rem;
+    }
+    </style>
+</head>
+<body class="bg-black text-white font-sf">
+    {% from "components/user_card.html" import user_card %}
+    <!-- SenFlix Logo at the top -->
+    <div class="senflix-logo-top">
+        <img src="{{ url_for('static', filename='logos/senflix.svg') }}" alt="SenFlix Logo" class="h-12 w-auto">
+    </div>
+    <h1 class="headline-centered">Who's watching?</h1>
     <!-- Existing Profiles -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mt-8">
+    <div class="user-selection-grid">
         {% for user in users %}
-        <a href="{{ url_for('select_user', user_id=user.id) }}">
             {{ user_card(user) }}
-        </a>
         {% endfor %}
-        
         <!-- New Profile Button -->
         <button onclick="showCreateProfileModal()" 
-                class="aspect-square rounded-lg border-2 border-dashed border-gray-600 hover:border-gray-400 transition-colors flex items-center justify-center">
-            <svg class="w-12 h-12 text-gray-600 group-hover:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-            </svg>
+                class="aspect-square rounded-lg border-2 border-dashed border-gray-600 hover:border-gray-400 transition-colors flex flex-col items-center justify-center text-gray-400 text-4xl font-bold">
+            +
         </button>
     </div>
-</div>
-
-<!-- Create Profile Modal -->
-<div id="createProfileModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center">
-    <div class="bg-gray-900 p-6 rounded-lg max-w-md w-full mx-4">
-        <h2 class="text-2xl font-bold mb-6">Create New Profile</h2>
-        <form action="{{ url_for('create_user') }}" method="POST" class="space-y-6">
-            <!-- Avatar Selection -->
-            <div>
-                <label class="block text-sm font-medium mb-2">Select Avatar</label>
-                <div class="grid grid-cols-4 gap-4">
-                    {% for avatar in available_avatars %}
-                    <label class="cursor-pointer group flex flex-col items-center relative">
-                        <input type="radio" name="avatar" value="{{ avatar.id }}" class="peer hidden" {% if avatar.id == selected_avatar_id %}checked{% endif %}>
-                        <img src="{{ url_for('static', filename=avatar.profile_image_url) }}" alt="Avatar {{ avatar.name }}" class="w-20 h-20 rounded-full border-2 border-gray-700 group-hover:border-blue-500 transition-all">
-                        <span class="text-xs text-gray-300 mt-1">{{ avatar.name }}</span>
-                        <div class="absolute left-1/2 -translate-x-1/2 bottom-[-2.5rem] w-48 bg-gray-800 text-gray-200 text-xs rounded-lg shadow-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center">{{ avatar.description }}</div>
-                    </label>
-                    {% endfor %}
+    <!-- Create Profile Modal -->
+    <div id="createProfileModal" class="modal-backdrop hidden">
+        <div class="modal-content bg-gray-900 p-6 rounded-lg max-w-md w-full mx-4">
+            <button onclick="hideCreateProfileModal()" class="absolute top-2 right-2 text-gray-400 hover:text-red-500 text-2xl font-bold focus:outline-none" aria-label="Close">&times;</button>
+            <h2 class="text-2xl font-bold mb-6">Create New Profile</h2>
+            <form action="{{ url_for('create_user') }}" method="POST" class="space-y-6">
+                <!-- Avatar Selection -->
+                <div>
+                    <label class="block text-sm font-medium mb-2">Select Avatar</label>
+                    <div class="grid grid-cols-4 gap-3">
+                        {% for avatar in available_avatars %}
+                        <label class="avatar-label flex flex-col items-center relative transition-all" data-avatar-id="{{ avatar.id }}">
+                            <input type="radio" name="avatar" value="{{ avatar.id }}" class="peer hidden">
+                            <div class="relative">
+                                <img src="{{ url_for('static', filename=avatar.profile_image_url) }}"
+                                     alt="Avatar {{ avatar.name }}"
+                                     class="avatar-img w-16 h-16 md:w-20 md:h-20 rounded-full border-2 transition-all relative z-10">
+                                <span class="custom-tooltip invisible opacity-0 group-hover:visible group-hover:opacity-100 absolute left-1/2 -translate-x-1/2 top-full mt-2 min-w-[160px] max-w-xs px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-30 pointer-events-none text-center border border-blue-500 shadow-md">
+                                    {{ avatar.description }}
+                                </span>
+                            </div>
+                            <span class="text-xs text-gray-300 mt-1">{{ avatar.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium mb-2">Name</label>
+                        <input type="text" name="name" class="w-full rounded border border-gray-600 bg-gray-800 text-gray-100 p-2" required>
+                    </div>
                 </div>
-                <div class="mt-6">
-                    <label class="block text-sm font-medium mb-2">Name</label>
-                    <input type="text" name="name" class="w-full rounded border border-gray-600 bg-gray-800 text-gray-100 p-2" required>
+                <!-- WhatsApp Number Input -->
+                <div>
+                    <label for="whatsapp_number" class="block text-sm font-medium mb-2">WhatsApp Number</label>
+                    <input type="text" id="whatsapp_number" name="whatsapp_number" required
+                           class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-red-500 focus:ring-1 focus:ring-red-500">
                 </div>
-            </div>
-            <!-- WhatsApp Number Input -->
-            <div>
-                <label for="whatsapp_number" class="block text-sm font-medium mb-2">WhatsApp Number</label>
-                <input type="text" id="whatsapp_number" name="whatsapp_number" required
-                       class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-red-500 focus:ring-1 focus:ring-red-500">
-            </div>
-            <!-- Buttons -->
-            <div class="flex justify-end space-x-4">
-                <button type="button" onclick="hideCreateProfileModal()" 
-                        class="px-4 py-2 rounded-lg border border-gray-600 hover:bg-gray-800 transition-colors">
-                    Cancel
-                </button>
-                <button type="submit" 
-                        class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 transition-colors">
-                    Create Profile
-                </button>
-            </div>
-        </form>
+                <div class="flex justify-between items-center gap-2">
+                    <button type="button" onclick="hideCreateProfileModal()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg">Cancel</button>
+                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">Create</button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
-
-<script>
-function showCreateProfileModal() {
-    document.getElementById('createProfileModal').classList.remove('hidden');
-    document.getElementById('createProfileModal').classList.add('flex');
-}
-
-function hideCreateProfileModal() {
-    document.getElementById('createProfileModal').classList.add('hidden');
-    document.getElementById('createProfileModal').classList.remove('flex');
-}
-</script>
-{% endblock %} 
+    <script>
+    function showCreateProfileModal() {
+        document.getElementById('createProfileModal').classList.remove('hidden');
+    }
+    function hideCreateProfileModal() {
+        document.getElementById('createProfileModal').classList.add('hidden');
+    }
+    // Close modal if click outside modal-content
+    document.addEventListener('DOMContentLoaded', function() {
+      const modal = document.getElementById('createProfileModal');
+      modal.addEventListener('mousedown', function(e) {
+        if (e.target === modal) {
+          hideCreateProfileModal();
+        }
+      });
+    });
+    // Avatar selection indication (JS approach)
+    document.addEventListener('DOMContentLoaded', function() {
+      const avatarLabels = document.querySelectorAll('.avatar-label');
+      avatarLabels.forEach(label => {
+        const input = label.querySelector('input[type="radio"]');
+        input.addEventListener('change', function() {
+          avatarLabels.forEach(l => l.classList.remove('selected'));
+          if (input.checked) {
+            label.classList.add('selected');
+          }
+        });
+        // Init state on load
+        if (input.checked) {
+          label.classList.add('selected');
+        }
+      });
+      // WhatsApp number validation
+      const waInput = document.querySelector('input[name="whatsapp_number"]');
+      if (waInput) {
+        waInput.addEventListener('input', function() {
+          const valid = /^\+49[1-9][0-9]{8,13}$/.test(waInput.value);
+          waInput.setCustomValidity(valid ? '' : 'Please enter a valid German mobile number with country code, e.g. +491771234567');
+        });
+      }
+    });
+    </script>
+    <script src="{{ url_for('static', filename='js/avatar-select.js') }}"></script>
+</body>
+</html>
