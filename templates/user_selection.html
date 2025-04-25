@@ -8,7 +8,7 @@
     <h1 class="text-3xl font-bold mb-8">Who's watching?</h1>
     
     <!-- Existing Profiles -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-12">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mt-8">
         {% for user in users %}
         <a href="{{ url_for('select_user', user_id=user.id) }}">
             {{ user_card(user) }}
@@ -35,20 +35,18 @@
                 <label class="block text-sm font-medium mb-2">Select Avatar</label>
                 <div class="grid grid-cols-4 gap-4">
                     {% for avatar in available_avatars %}
-                    <label class="cursor-pointer group flex flex-col items-center">
-                        <input type="radio" name="avatar" value="{{ avatar.id }}" class="hidden peer" required>
-                        <img src="{{ url_for('static', filename='avatars/profile/' ~ avatar.profile_image) }}"
-                             alt="Avatar" class="w-16 h-16 rounded-full border-2 border-gray-700 group-hover:border-red-500 mb-1">
+                    <label class="cursor-pointer group flex flex-col items-center relative">
+                        <input type="radio" name="avatar" value="{{ avatar.id }}" class="peer hidden" {% if avatar.id == selected_avatar_id %}checked{% endif %}>
+                        <img src="{{ url_for('static', filename=avatar.profile_image_url) }}" alt="Avatar {{ avatar.name }}" class="w-20 h-20 rounded-full border-2 border-gray-700 group-hover:border-blue-500 transition-all">
                         <span class="text-xs text-gray-300 mt-1">{{ avatar.name }}</span>
+                        <div class="absolute left-1/2 -translate-x-1/2 bottom-[-2.5rem] w-48 bg-gray-800 text-gray-200 text-xs rounded-lg shadow-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center">{{ avatar.description }}</div>
                     </label>
                     {% endfor %}
                 </div>
-            </div>
-            <!-- Name Input -->
-            <div>
-                <label for="name" class="block text-sm font-medium mb-2">Name</label>
-                <input type="text" id="name" name="name" required
-                       class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-red-500 focus:ring-1 focus:ring-red-500">
+                <div class="mt-6">
+                    <label class="block text-sm font-medium mb-2">Name</label>
+                    <input type="text" name="name" class="w-full rounded border border-gray-600 bg-gray-800 text-gray-100 p-2" required>
+                </div>
             </div>
             <!-- WhatsApp Number Input -->
             <div>

@@ -32,6 +32,7 @@ class Avatar(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=False)
+    image = db.Column(db.String(255), nullable=False)
     
     # Relationships
     users = db.relationship('User', back_populates='avatar', lazy='dynamic')
@@ -47,6 +48,14 @@ class Avatar(db.Model):
         if not description:
             raise ValueError("Description is required")
         return description
+
+    @property
+    def profile_image_url(self):
+        return f"avatars/profile/{self.image}" if self.image else "avatars/default.png"
+
+    @property
+    def hero_image_url(self):
+        return f"avatars/hero/{self.image}" if self.image else "avatars/default_hero.png"
 
 class User(db.Model):
     """

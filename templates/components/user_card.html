@@ -1,14 +1,12 @@
 {% macro user_card(user) %}
-<div class="user-card group relative aspect-square rounded-lg overflow-hidden cursor-pointer transform-gpu transition-all duration-300 hover:scale-105 bg-gray-900 border border-gray-700">
+<div class="user-card group relative max-w-[360px] w-full flex flex-col items-center rounded-lg overflow-hidden cursor-pointer transform-gpu transition-all duration-300 hover:scale-105 bg-gray-900 border border-gray-700">
     <!-- User Avatar -->
-    <img src="{{ url_for('static', filename='avatars/default.png') }}"
+    <img src="{{ url_for('static', filename=user.avatar.profile_image_url) }}"
          alt="{{ user.name }}"
-         class="w-full h-3/4 object-cover">
+         class="w-32 h-32 object-cover rounded-full border-4 border-gray-700 mt-6 mb-4 shadow-lg">
     <!-- User Info -->
-    <div class="p-4 flex flex-col items-center justify-center h-1/4">
-        <h3 class="text-lg font-bold mb-1 truncate w-full text-center">{{ user.name }}</h3>
-        <span class="text-xs text-gray-400 mb-1">WhatsApp: {{ user.whatsapp_number }}</span>
-        <span class="block text-xs text-gray-500">ID: {{ user.id }}</span>
+    <div class="flex flex-col items-center justify-center">
+        <h3 class="text-lg font-bold mb-2">{{ user.name }}</h3>
     </div>
 </div>
 {% endmacro %}
