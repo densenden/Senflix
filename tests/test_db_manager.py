@@ -1,47 +1,45 @@
-import pytest
-from datamanager import db_manager
-from flask import Flask
+import sys
 import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import pytest
+from datamanager.db_manager import SQLiteDataManager
+from datamanager.interface import db, User, Movie, Category, Avatar, UserFavorite
+from flask import Flask
 
 @pytest.fixture
 def app():
-    """Create a Flask app for testing."""
+    """Create a Flask app for testing with in-memory SQLite DB."""
     app = Flask(__name__)
     app.config['TESTING'] = True
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    
-    # Initialize SQLAlchemy with the app
-    db_manager.db.init_app(app)
-    
-    # Create all tables
-    with app.app_context():
-        db_manager.db.create_all()
-    
     return app
 
 @pytest.fixture
 def db_manager_instance(app):
     """Create a SQLiteDataManager instance for testing."""
-    manager = db_manager.SQLiteDataManager()
+    manager = SQLiteDataManager()
     manager.init_app(app)
     return manager
 
 @pytest.fixture
 def sample_user_data():
-    """Sample user data for testing."""
+    """Return unique user data for each test."""
+    import time
     return {
-        'name': 'Test User',
-        'whatsapp_number': '+49123456789',
+        'name': f'Test User {int(time.time()*1000)}',
+        'whatsapp_number': f'+49123{int(time.time()*1000)}',
         'description': 'Test Description',
         'avatar_id': 1
     }
 
 @pytest.fixture
 def sample_movie_data():
-    """Sample movie data for testing."""
+    """Return unique movie data for each test."""
+    import time
     return {
-        'title': 'Test Movie',
+        'name': f'Test Movie {int(time.time()*1000)}',
         'description': 'Test Movie Description'
     }
 
@@ -81,7 +79,7 @@ def test_get_all_users(db_manager_instance, app, sample_user_data):
         
         users = db_manager_instance.get_all_users()
         assert len(users) == 2
-        assert any(user['name'] == 'Test User' for user in users)
+        assert any(user['name'] == sample_user_data['name'] for user in users)
         assert any(user['name'] == 'Another User' for user in users)
 
 def test_add_movie(db_manager_instance, app, sample_movie_data):
@@ -89,7 +87,7 @@ def test_add_movie(db_manager_instance, app, sample_movie_data):
     with app.app_context():
         movie = db_manager_instance.add_movie(sample_movie_data)
         assert movie is not None
-        assert movie['title'] == sample_movie_data['title']
+        assert movie['name'] == sample_movie_data['name']
         assert movie['description'] == sample_movie_data['description']
 
 def test_get_movie_data(db_manager_instance, app, sample_movie_data):
@@ -100,7 +98,7 @@ def test_get_movie_data(db_manager_instance, app, sample_movie_data):
         # Then try to retrieve it
         retrieved_movie = db_manager_instance.get_movie_data(movie['id'])
         assert retrieved_movie is not None
-        assert retrieved_movie['title'] == sample_movie_data['title']
+        assert retrieved_movie['name'] == sample_movie_data['name']
         assert retrieved_movie['description'] == sample_movie_data['description']
 
 def test_add_favorite(db_manager_instance, app, sample_user_data, sample_movie_data):
@@ -172,13 +170,13 @@ def test_update_movie(db_manager_instance, app, sample_movie_data):
         
         # Update the movie
         updated_data = {
-            'title': 'Updated Movie Title',
+            'name': 'Updated Movie Name',
             'description': 'Updated Description'
         }
         updated_movie = db_manager_instance.update_movie(movie['id'], updated_data)
         
         assert updated_movie is not None
-        assert updated_movie['title'] == 'Updated Movie Title'
+        assert updated_movie['name'] == 'Updated Movie Name'
         assert updated_movie['description'] == 'Updated Description'
 
 def test_delete_movie(db_manager_instance, app, sample_movie_data):
@@ -199,45 +197,45 @@ def test_get_movies_by_category(db_manager_instance, app):
     """Test retrieving movies by category."""
     with app.app_context():
         # Create a category
-        category = db_manager.Category(name='Action', img='action.jpg')
-        db_manager.db.session.add(category)
-        db_manager.db.session.commit()
+        category = Category(name='Action', img='action.jpg')
+        db.session.add(category)
+        db.session.commit()
         
         # Create a movie
-        movie = db_manager.Movie(title='Action Movie', description='Action packed!')
-        db_manager.db.session.add(movie)
-        db_manager.db.session.commit()
+        movie = Movie(name='Action Movie', description='Action packed!')
+        db.session.add(movie)
+        db.session.commit()
         
         # Associate movie with category using the movie_categories table
-        db_manager.db.session.execute(
-            db_manager.db.text('INSERT INTO movie_categories (movie_id, category_id) VALUES (:movie_id, :category_id)'),
+        db.session.execute(
+            db.text('INSERT INTO movie_categories (movie_id, category_id) VALUES (:movie_id, :category_id)'),
             {'movie_id': movie.id, 'category_id': category.id}
         )
-        db_manager.db.session.commit()
+        db.session.commit()
         
         # Get movies by category
         movies = db_manager_instance.get_movies_by_category(category.id)
         assert len(movies) == 1
-        assert movies[0]['title'] == 'Action Movie'
+        assert movies[0]['name'] == 'Action Movie'
 
 def test_get_all_categories_with_movies(db_manager_instance, app):
     """Test retrieving all categories with their movies."""
     with app.app_context():
         # Create categories
-        action = db_manager.Category(name='Action', img='action.jpg')
-        comedy = db_manager.Category(name='Comedy', img='comedy.jpg')
-        db_manager.db.session.add_all([action, comedy])
-        db_manager.db.session.commit()
+        action = Category(name='Action', img='action.jpg')
+        comedy = Category(name='Comedy', img='comedy.jpg')
+        db.session.add_all([action, comedy])
+        db.session.commit()
         
         # Create movies
-        movie1 = db_manager.Movie(title='Action Movie', description='Action packed!')
-        movie2 = db_manager.Movie(title='Comedy Movie', description='Very funny!')
-        db_manager.db.session.add_all([movie1, movie2])
-        db_manager.db.session.commit()
+        movie1 = Movie(name='Action Movie', description='Action packed!')
+        movie2 = Movie(name='Comedy Movie', description='Very funny!')
+        db.session.add_all([movie1, movie2])
+        db.session.commit()
         
         # Associate movies with categories using the movie_categories table
-        db_manager.db.session.execute(
-            db_manager.db.text('INSERT INTO movie_categories (movie_id, category_id) VALUES (:movie_id1, :category_id1), (:movie_id2, :category_id2)'),
+        db.session.execute(
+            db.text('INSERT INTO movie_categories (movie_id, category_id) VALUES (:movie_id1, :category_id1), (:movie_id2, :category_id2)'),
             {
                 'movie_id1': movie1.id, 
                 'category_id1': action.id,
@@ -245,7 +243,7 @@ def test_get_all_categories_with_movies(db_manager_instance, app):
                 'category_id2': comedy.id
             }
         )
-        db_manager.db.session.commit()
+        db.session.commit()
         
         # Get all categories with movies
         categories = db_manager_instance.get_all_categories_with_movies()

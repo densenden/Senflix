@@ -1,0 +1,40 @@
+{% macro user_card(user) %}
+<div class="user-card group relative aspect-square rounded-lg overflow-hidden cursor-pointer transform-gpu transition-all duration-300 hover:scale-105">
+    <!-- User Avatar -->
+    <img src="{{ url_for('static', filename='avatars/profile/' + user.avatar.profile_image) }}"
+         alt="{{ user.description }}"
+         class="w-full h-full object-cover">
+    
+    <!-- Overlay -->
+    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <!-- User Info -->
+        <div class="absolute bottom-0 left-0 right-0 p-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+            <h3 class="text-lg font-bold mb-2">{{ user.description }}</h3>
+            
+            <!-- Stats -->
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="stats-item">
+                    <span class="block text-xl font-bold">{{ user.stats.watched_count }}</span>
+                    <span class="text-xs text-gray-400">Watched</span>
+                </div>
+                <div class="stats-item">
+                    <span class="block text-xl font-bold">{{ user.stats.watchlist_count }}</span>
+                    <span class="text-xs text-gray-400">Watchlist</span>
+                </div>
+                <div class="stats-item">
+                    <span class="block text-xl font-bold">{{ "%.1f"|format(user.stats.avg_rating|float) }}</span>
+                    <span class="text-xs text-gray-400">Avg Rating</span>
+                </div>
+            </div>
+            
+            <!-- Favorite Genre -->
+            {% if user.stats.favorite_genre %}
+            <div class="mt-4">
+                <span class="text-xs text-gray-400">Favorite Genre</span>
+                <span class="block font-medium">{{ user.stats.favorite_genre }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endmacro %} 

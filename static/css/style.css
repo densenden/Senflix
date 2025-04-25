@@ -1,0 +1,111 @@
+@font-face {
+    font-family: 'SF Pro Display';
+    src: url('../fonts/SF-Pro-Display-Regular.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'SF Pro Display';
+    src: url('../fonts/SF-Pro-Display-Bold.woff2') format('woff2');
+    font-weight: bold;
+    font-style: normal;
+}
+
+.font-sf {
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Base Styles */
+body {
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #000;
+    color: #fff;
+}
+
+/* Buttons */
+.btn-primary {
+    @apply bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors duration-300;
+}
+
+.btn-secondary {
+    @apply bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors duration-300;
+}
+
+/* Movie Grid */
+.movie-grid-container {
+    @apply relative overflow-hidden;
+}
+
+.movie-grid-wrapper {
+    @apply grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4;
+}
+
+.movie-card {
+    @apply relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer;
+    transform-style: preserve-3d;
+    transition: transform 0.3s ease-out;
+}
+
+.movie-poster {
+    @apply relative w-full h-full;
+}
+
+.movie-overlay {
+    @apply absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-300;
+}
+
+.movie-card:hover .movie-overlay {
+    @apply opacity-100;
+}
+
+.movie-info {
+    @apply absolute bottom-0 left-0 right-0 p-4 transform translate-y-full transition-transform duration-300;
+}
+
+.movie-card:hover .movie-info {
+    @apply translate-y-0;
+}
+
+.movie-actions {
+    @apply absolute top-4 right-4 flex space-x-2 opacity-0 transition-opacity duration-300;
+}
+
+.movie-card:hover .movie-actions {
+    @apply opacity-100;
+}
+
+.action-btn {
+    @apply bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors duration-300;
+}
+
+/* 3D Effect */
+.movie-card {
+    perspective: 1000px;
+}
+
+.movie-card::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 transition-opacity duration-300;
+}
+
+.movie-card:hover::before {
+    @apply opacity-100;
+}
+
+/* Glare Effect */
+.movie-card::after {
+    content: '';
+    @apply absolute inset-0;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0) 60%
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+}
+
+.movie-card:hover::after {
+    opacity: 1;
+} 
