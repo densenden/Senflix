@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from .interface import DataManagerInterface, db, User, Movie, Category, StreamingPlatform, UserFavorite, logger
+from .interface import DataManagerInterface, User, Movie, Category, StreamingPlatform, UserFavorite, logger
 from datetime import datetime
 from sqlalchemy.orm import validates
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -8,6 +8,7 @@ from pathlib import Path
 from sqlalchemy.exc import SQLAlchemyError
 from typing import Dict, List, Optional, Any
 import json
+from flask_login import UserMixin
 
 # Initialize SQLAlchemy
 db = SQLAlchemy()
@@ -56,7 +57,7 @@ class Avatar(db.Model):
         """Returns the full path for the hero image"""
         return f"static/avatars/hero/{self.hero_image}"
 
-class User(db.Model):
+class User(db.Model, UserMixin):
     """
     Represents a user in the system.
     
@@ -105,6 +106,19 @@ class User(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+    # Flask-Login required methods
+    def is_authenticated(self):
+        return True
+
+    def is_active(self):
+        return True
+
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        return str(self.id)
 
 class Movie(db.Model):
     """
@@ -353,6 +367,12 @@ class SQLiteDataManager(DataManagerInterface):
     def init_app(self, app):
         """Initialize the database with the Flask app."""
         self.app = app
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///senflix.db'
+        app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+        self.db.init_app(app)
+        
+        with app.app_context():
+            self.db.create_all()
 
     def get_all_users(self) -> List[Dict[str, Any]]:
         """Return list of all users."""
