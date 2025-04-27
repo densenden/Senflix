@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "components/movie_card.html" import movie_card %}
+{% from "components/navigation.html" import top_nav %}
+{% block title %}{{ category.name }} - SenFlix{% endblock %}
+{% block content %}
+{{ top_nav(current_user=current_user) }}
+<div class="min-h-screen bg-black text-white">
+  <div class="relative h-[48vh] min-h-[320px] flex items-end mb-12">
+    {% if category.img %}
+    <img src="{{ url_for('static', filename='categories/' ~ category.img) }}" alt="{{ category.name }} background" class="absolute inset-0 w-full h-full object-cover object-center opacity-70">
+    <div class="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent"></div>
+    {% endif %}
+    <div class="relative z-10 p-12">
+      <h1 class="text-5xl font-extrabold text-white drop-shadow-lg mb-4">{{ category.name }}</h1>
+      <p class="text-lg text-gray-200">All movies in this category</p>
+    </div>
+  </div>
+  <div class="container mx-auto px-4 md:px-10">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
+      {% for movie in category.movies %}
+        {{ movie_card(movie) }}
+      {% else %}
+        <p>No movies found in this category.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

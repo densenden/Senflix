@@ -8,7 +8,8 @@
             <div class="flex items-center space-x-4">
                 {% if current_user and current_user.is_authenticated %}
                     <a href="{{ url_for('user_profile', user_id=current_user.id) }}" class="flex items-center space-x-2 group">
-                        <img src="{{ url_for('static', filename='avatars/profile/avatar_' ~ current_user.avatar_id ~ '.jpg') }}" alt="{{ current_user.name }}" class="w-8 h-8 rounded-full border-2 border-yellow-400 group-hover:border-white transition">
+                        {% set avatar_path = current_user.avatar.profile_image_url if current_user.avatar and current_user.avatar.profile_image_url else 'avatars/profile/avatar_' ~ current_user.avatar_id ~ '.jpg' %}
+                        <img src="{{ url_for('static', filename=avatar_path) }}" alt="{{ current_user.name }}" class="w-8 h-8 rounded-full border-2 border-yellow-400 group-hover:border-white transition" onerror="this.onerror=null;this.src='{{ url_for('static', filename='avatars/default.png') }}';">
                         <span class="text-gray-200 group-hover:text-white font-semibold">{{ current_user.name }}</span>
                     </a>
                 {% endif %}
@@ -19,7 +20,7 @@
 {% endmacro %}
 
 {% macro side_nav(anchors=None, categories=None) %}
-<aside id="sidebar" class="relative w-64 bg-black/80 backdrop-blur-sm overflow-y-auto transition-transform duration-500" style="transform: translateX(0); min-height: calc(100vh - 4rem);">
+<aside id="sidebar" class="fixed top-16 left-0 w-64 bg-black/80 backdrop-blur-sm overflow-y-auto transition-transform duration-500 h-[calc(100vh-4rem)] z-40" style="transform: translateX(0);">
     <div class="p-4">
         {% if anchors %}
         <h3 class="text-lg font-semibold mb-4">Sections</h3>
@@ -46,29 +47,56 @@
         </ul>
         {% endif %}
     </div>
+    <div class="fade-dots absolute right-4 bottom-4 flex gap-1 z-50">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+    </div>
 </aside>
 <script>
 (function() {
   let sidebar = document.getElementById('sidebar');
   let main = document.getElementById('main-content');
   let timer;
+  // Animate dots: disappear one after another
+  const dots = document.querySelectorAll('.fade-dots .dot');
+  function resetDots() {
+    dots.forEach(dot => dot.style.opacity = 1);
+  }
+  function animateDots() {
+    resetDots();
+    setTimeout(()=>dots[0].style.opacity=0, 1000);
+    setTimeout(()=>dots[1].style.opacity=0, 2000);
+    setTimeout(()=>dots[2].style.opacity=0, 3000);
+  }
+  function showDots() {
+    resetDots();
+    document.querySelector('.fade-dots').style.display = '';
+  }
+  function hideDots() {
+    document.querySelector('.fade-dots').style.display = 'none';
+  }
+
   function slideOut() {
     sidebar.style.transform = 'translateX(-100%)';
     if(main) main.style.marginLeft = '0';
+    if(main) main.classList.add('sidebar-hidden');
+    hideDots();
   }
+
   function slideIn() {
     sidebar.style.transform = 'translateX(0)';
     if(main) main.style.marginLeft = '16rem';
+    if(main) main.classList.remove('sidebar-hidden');
+    showDots();
+    animateDots();
   }
+
   function resetTimer() {
     slideIn();
     clearTimeout(timer);
-    timer = setTimeout(slideOut, 3000);
+    timer = setTimeout(slideOut, 3300);
   }
-  ['mousemove','keydown','touchstart'].forEach(evt => {
-    document.addEventListener(evt, resetTimer, {passive:true});
-  });
-  resetTimer();
 
   // Scrollspy
   const links = document.querySelectorAll('#sidebar .sidebar-link');
@@ -79,10 +107,17 @@
     for(let i=0; i<sections.length; i++) {
       if(sections[i].offsetTop <= scrollPos) activeIdx = i;
     }
-    links.forEach((l, i) => l.classList.toggle('text-red-500', i===activeIdx));
+    links.forEach((l, i) => l.classList.toggle('active', i===activeIdx));
   }
   window.addEventListener('scroll', onScroll);
   onScroll();
+  ['mousemove','keydown','touchstart'].forEach(evt => {
+    document.addEventListener(evt, function() {
+      showDots();
+      resetTimer();
+    }, {passive:true});
+  });
+  resetTimer();
 })();
 </script>
 {% endmacro %}

@@ -4,7 +4,7 @@ from flask import Flask, render_template, url_for, request, redirect, flash, jso
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
 from datamanager.db_manager import SQLiteDataManager
-from datamanager.interface import User, Avatar, Category, Movie, StreamingPlatform
+from datamanager.interface import User, Avatar, Category, Movie, StreamingPlatform, UserFavorite
 from datamanager.omdb_manager import OMDBManager
 
 load_dotenv()
@@ -106,7 +106,22 @@ def movie_detail(movie_id):
     if not movie:
         flash('Not found', 'error')
         return redirect(url_for('movies'))
-    return render_template('movie_detail.html', movie=movie)
+    # Get all users who watched this movie
+    watched_entries = UserFavorite.query.filter_by(movie_id=movie_id, watched=True).all()
+    watched_users = []
+    for entry in watched_entries:
+        user = User.query.get(entry.user_id)
+        if user:
+            avatar = Avatar.query.get(user.avatar_id)
+            watched_users.append({
+                'id': user.id,
+                'name': user.name,
+                'avatar_url': avatar.profile_image_url if avatar else '/static/avatars/default.png',
+                'rating': entry.rating
+            })
+    # Get OMDB info if present
+    omdb_data = movie.get('omdb_data') if isinstance(movie, dict) else None
+    return render_template('movie_detail.html', movie=movie, watched_users=watched_users, omdb_data=omdb_data, current_user=current_user)
 
 @app.route('/toggle_watchlist/<int:movie_id>', methods=['POST'])
 @login_required
@@ -202,6 +217,19 @@ def delete_movie(user_id, movie_id):
     data_manager.remove_favorite(user_id, movie_id)
     flash('Removed','success')
     return redirect(url_for('user_profile', user_id=user_id))
+
+@app.route('/category/<int:category_id>')
+@login_required
+def category_detail(category_id):
+    # Get the category object (for name, img, etc.)
+    category_obj = Category.query.get(category_id)
+    if not category_obj:
+        flash('Category not found', 'error')
+        return redirect(url_for('movies'))
+    movies = data_manager.get_movies_by_category(category_id)
+    category = category_obj.to_dict()
+    category['movies'] = movies
+    return render_template('category_detail.html', category=category, current_user=current_user)
 
 if __name__=='__main__':
     app.run(debug=True, port=5001)

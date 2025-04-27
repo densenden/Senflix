@@ -1,33 +1,65 @@
 {% extends 'base.html' %}
 {% import 'components/movie_card.html' as mc %}
-{% from 'components/navigation.html' import top_nav, side_nav %}
+{% from 'components/navigation.html' import top_nav %}
 {% block content %}
 {{ top_nav(current_user=current_user) }}
-<div class="flex flex-row bg-black min-h-screen pt-16">
-  {{ side_nav() }}
-  <div class="flex-1">
-    <div class="container mx-auto p-4 text-white bg-black">
-      <div class="flex flex-col md:flex-row items-center gap-8 mb-8">
-        <img src="{{ url_for('static', filename='avatars/profile/avatar_' ~ user.avatar_id ~ '.jpg') }}" alt="Avatar" class="avatar-large w-32 h-32 rounded-full border-4 border-blue-500 shadow-lg">
-        <div>
-          <h2 class="text-3xl font-bold mb-2">{{ user.name }}'s Movies</h2>
-          {% if user.avatar_description %}
-            <p class="text-blue-200 italic mb-2">{{ user.avatar_description }}</p>
-          {% endif %}
-          <p class="text-blue-300">WhatsApp: {{ user.whatsapp_number }}</p>
-        </div>
+<main id="main-content" class="min-h-screen w-full bg-gradient-to-br from-black via-gray-900 to-gray-950 text-gray-100">
+  <section class="relative w-full h-64 md:h-80 flex items-end mb-8">
+    {{ user_card(user) }}
+    <img src="{{ url_for('static', filename='avatars/profile/avatar_' ~ user.avatar_id ~ '.jpg') }}" alt="Avatar" class="absolute inset-0 w-full h-full object-cover opacity-30 blur-sm">
+    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent"></div>
+    <div class="relative z-10 flex items-end gap-6 p-8 w-full">
+      <img src="{{ url_for('static', filename='avatars/profile/avatar_' ~ user.avatar_id ~ '.jpg') }}" alt="Avatar" class="w-32 h-32 rounded-full border-4 border-blue-500 shadow-2xl">
+      <div>
+        <h2 class="text-4xl md:text-5xl font-extrabold mb-2 drop-shadow">{{ user.name }}'s Movies</h2>
+        {% if user.avatar_description %}
+          <p class="text-blue-200 italic mb-2">{{ user.avatar_description }}</p>
+        {% endif %}
+        <p class="text-blue-300">WhatsApp: {{ user.whatsapp_number }}</p>
       </div>
-      <h3 class="text-2xl font-semibold mb-4">Favorites</h3>
-      {% if user.favorites %}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {% for fav in user.favorites %}
-            {{ mc.movie_card(fav) }}
-          {% endfor %}
-        </div>
-      {% else %}
-        <p>No favorite movies yet.</p>
-      {% endif %}
     </div>
-  </div>
-</div>
+  </section>
+  <section class="w-full max-w-7xl mx-auto px-4">
+    <h3 class="text-2xl font-semibold mb-4">Favorites</h3>
+    {% if user.favorites %}
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+        {% for fav in user.favorites %}
+          <div class="scale-90 hover:scale-100 transition-transform duration-300">
+            {{ mc.movie_card(fav) }}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p>No favorite movies yet.</p>
+    {% endif %}
+  </section>
+</main>
 {% endblock %}
+
+{% macro user_card(user) %}
+  <div class="user-card-3d group flex flex-col items-center bg-gray-900/90 rounded-xl p-4 shadow-lg transition-all duration-300 cursor-pointer" style="perspective:600px; will-change:transform;">
+    <img src="{{ url_for('static', filename='avatars/profile/avatar_' ~ (user.avatar_id|string) ~ '.jpg') }}" alt="{{ user.name }}" class="w-16 h-16 rounded-full mb-2 border-2 border-gray-700">
+    <span class="font-semibold text-sm text-white">{{ user.name }}</span>
+    {% if user.rating %}<span class="text-yellow-400 font-bold">{{ user.rating }}/10</span>{% endif %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.user-card-3d').forEach(function(card) {
+        let tilt = (e) => {
+          const rect = card.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          const cx = rect.width / 2;
+          const cy = rect.height / 2;
+          const dx = (x - cx) / cx;
+          const dy = (y - cy) / cy;
+          card.style.transform = `rotateY(${dx*18}deg) rotateX(${-dy*18}deg)`;
+        };
+        card.addEventListener('mousemove', tilt);
+        card.addEventListener('mouseleave', () => {
+          card.style.transform = '';
+        });
+      });
+    });
+    </script>
+  </div>
+{% endmacro %}

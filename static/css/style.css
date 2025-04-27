@@ -1,26 +1,52 @@
-@font-face {
-    font-family: 'SF Pro Display';
-    src: url('../fonts/SF-Pro-Display-Regular.woff2') format('woff2');
-    font-weight: normal;
-    font-style: normal;
-}
+/* Consolidated Custom Styles for SenFlix */
 
-@font-face {
-    font-family: 'SF Pro Display';
-    src: url('../fonts/SF-Pro-Display-Bold.woff2') format('woff2');
-    font-weight: bold;
-    font-style: normal;
-}
-
-.font-sf {
-    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-/* Base Styles */
 body {
-    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-    background-color: #000;
-    color: #fff;
+  background-color: #000;
+  color: #fff;
+}
+
+/* Sidebar Styles */
+#sidebar {
+  position: fixed;
+  top: 4rem;
+  left: 0;
+  width: 16rem;
+  height: calc(100vh - 4rem);
+  z-index: 40;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(6px);
+  transition: transform 0.5s;
+}
+#main-content {
+  transition: margin-left 0.5s, max-width 0.5s;
+  margin-left: 16rem;
+}
+.sidebar-hidden {
+  margin-left: 0 !important;
+  max-width: 100vw !important;
+}
+@media (max-width: 900px) {
+  #sidebar { width: 12rem; }
+  #main-content { margin-left: 12rem; }
+}
+
+/* Sidebar Indicator & Scrollspy */
+.fade-dots { pointer-events: none; }
+.fade-dots .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.3;
+  transition: opacity 0.4s;
+}
+.fade-dots .dot.active {
+  opacity: 1;
+}
+#sidebar .sidebar-link.active {
+  color: #ef4444 !important;
+  font-weight: bold;
 }
 
 /* Buttons */
@@ -41,12 +67,6 @@ body {
     @apply grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4;
 }
 
-.movie-card {
-    @apply relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer;
-    transform-style: preserve-3d;
-    transition: transform 0.3s ease-out;
-}
-
 .movie-poster {
     @apply relative w-full h-full;
 }
@@ -55,41 +75,27 @@ body {
     @apply absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-300;
 }
 
-.movie-card:hover .movie-overlay {
-    @apply opacity-100;
-}
-
 .movie-info {
     @apply absolute bottom-0 left-0 right-0 p-4 transform translate-y-full transition-transform duration-300;
-}
-
-.movie-card:hover .movie-info {
-    @apply translate-y-0;
 }
 
 .movie-actions {
     @apply absolute top-4 right-4 flex space-x-2 opacity-0 transition-opacity duration-300;
 }
 
-.movie-card:hover .movie-actions {
-    @apply opacity-100;
-}
-
 .action-btn {
     @apply bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors duration-300;
 }
 
-/* 3D Effect */
-.movie-card {
-    perspective: 1000px;
+.movie-card:hover .movie-overlay {
+    @apply opacity-100;
 }
 
-.movie-card::before {
-    content: '';
-    @apply absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 transition-opacity duration-300;
+.movie-card:hover .movie-info {
+    @apply translate-y-0;
 }
 
-.movie-card:hover::before {
+.movie-card:hover .movie-actions {
     @apply opacity-100;
 }
 
@@ -108,4 +114,4 @@ body {
 
 .movie-card:hover::after {
     opacity: 1;
-} 
+}

@@ -1,2 +1,25 @@
-{# Genre/category badge #}
-<span class="category-badge">{{ category_obj.name }}</span>
+{# 3D interactive category badge, no macro indirection #}
+<div class="category-badge-3d group relative inline-block px-4 py-2 rounded-full font-semibold text-white bg-gradient-to-br from-blue-700 via-purple-700 to-pink-700 shadow-lg transition-all duration-300 cursor-pointer"
+     style="perspective:600px; will-change:transform;">
+  <span class="relative z-10">{{ category_obj.name }}</span>
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.category-badge-3d').forEach(function(badge) {
+      let tilt = (e) => {
+        const rect = badge.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        const dx = (x - cx) / cx;
+        const dy = (y - cy) / cy;
+        badge.style.transform = `rotateY(${dx*18}deg) rotateX(${-dy*18}deg)`;
+      };
+      badge.addEventListener('mousemove', tilt);
+      badge.addEventListener('mouseleave', () => {
+        badge.style.transform = '';
+      });
+    });
+  });
+  </script>
+</div>
