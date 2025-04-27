@@ -140,7 +140,8 @@ class Movie(db.Model):
             'name': self.name,
             'plot': self.omdb_data.plot if hasattr(self, 'omdb_data') and self.omdb_data else None,
             'platforms': [p.to_dict() for p in self.platforms],
-            'categories': [c.to_dict() for c in self.categories]
+            'categories': [c.to_dict() for c in self.categories],
+            'omdb_data': self.omdb_data.to_dict() if self.omdb_data else None
         }
 
 class UserFavorite(db.Model):

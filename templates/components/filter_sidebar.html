@@ -1,0 +1,38 @@
+{# Sidebar navigation and filtering component for SenFlix #}
+<aside class="sidebar">
+  <nav>
+    <ul>
+      <li><a href="/">User Selection</a></li>
+      <li><a href="/movies">Movies</a></li>
+      {# Add more navigation links as needed #}
+    </ul>
+  </nav>
+  <section class="filters">
+    <h3>Categories</h3>
+    <ul>
+      {% if categories %}
+        {% for category in categories %}
+          <li><a href="/movies?category={{ category.id }}">{{ category.name }}</a></li>
+        {% endfor %}
+      {% else %}
+        <li>No categories found.</li>
+      {% endif %}
+    </ul>
+    <h3>Platforms</h3>
+    <ul>
+      {% if platforms %}
+        {% for platform in platforms %}
+          <li><a href="/movies?platform={{ platform.id }}">{{ platform.name }}</a></li>
+        {% endfor %}
+      {% else %}
+        <li>No platforms found.</li>
+      {% endif %}
+    </ul>
+    <h3>Rating</h3>
+    <ul>
+      <li><a href="/movies?rating=9">9+</a></li>
+      <li><a href="/movies?rating=8">8+</a></li>
+      <li><a href="/movies?rating=7">7+</a></li>
+    </ul>
+  </section>
+</aside>

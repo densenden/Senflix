@@ -1,0 +1,8 @@
+{# Statistics block for user or movie #}
+<div class="statistics-block">
+  <ul>
+    {% for stat in statistics %}
+      <li>{{ stat.label }}: {{ stat.value }}</li>
+    {% endfor %}
+  </ul>
+</div>

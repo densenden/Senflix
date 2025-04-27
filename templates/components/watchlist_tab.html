@@ -1,0 +1,9 @@
+{# Watchlist tab for user profile #}
+<div class="watchlist-tab">
+  <h3>Watchlist</h3>
+  <ul>
+    {% for movie in watchlist %}
+      <li>{% include 'components/movie_card.html' with context %}</li>
+    {% endfor %}
+  </ul>
+</div>

@@ -79,12 +79,25 @@ def select_user(user_id):
 @app.route('/movies')
 @login_required
 def movies():
-    genre = request.args.get('genre', type=int)
-    genres = data_manager.get_all_categories_with_movies()
+    # Fetch all required movie lists
+    new_releases = data_manager.get_movies_by_category(1)  # Example: category 1 is new releases
+    popular_movies = data_manager.get_popular_movies()
+    friends_favorites = data_manager.get_friends_favorites(current_user.id)
+    top_rated = data_manager.get_top_rated_movies()
+    recent_commented = data_manager.get_recent_commented_movies()
+    categories = data_manager.get_all_categories_with_movies()
     platforms = data_manager.get_all_platforms()
-    if genre:
-        return render_template('movies.html', movies=data_manager.get_movies_by_category(genre), genres=genres, platforms=platforms, current_genre=genre)
-    return render_template('movies.html', new_releases=data_manager.get_movies_by_category(1), popular_movies=data_manager.get_user_favorites(current_user.id), genres=genres, platforms=platforms)
+    return render_template(
+        'movies.html',
+        new_releases=new_releases,
+        popular_movies=popular_movies,
+        friends_favorites=friends_favorites,
+        top_rated=top_rated,
+        recent_commented=recent_commented,
+        categories=categories,
+        platforms=platforms,
+        current_user=current_user
+    )
 
 @app.route('/movie/<int:movie_id>')
 @login_required
@@ -150,11 +163,12 @@ def users():
     return render_template('users.html', avatar_groups=active)
 
 @app.route('/users/<int:user_id>')
-def user_movies(user_id):
+@login_required
+def user_profile(user_id):
     user = data_manager.get_user_data(user_id)
     if not user:
-        flash('User not found','error')
-        return redirect(url_for('users'))
+        flash('User not found', 'error')
+        return redirect(url_for('movies'))
     return render_template('user_movies.html', user=user)
 
 @app.route('/users/<int:user_id>/add_movie', methods=['GET','POST'])
@@ -167,7 +181,7 @@ def add_movie(user_id):
         comment=request.form.get('comment')
         data_manager.upsert_favorite(user_id, mid, watched=watched, rating=rating, comment=comment)
         flash('Saved','success')
-        return redirect(url_for('user_movies', user_id=user_id))
+        return redirect(url_for('user_profile', user_id=user_id))
     return render_template('add_movie.html', user_id=user_id, movies=data_manager.get_all_movies())
 
 @app.route('/users/<int:user_id>/update_movie/<int:movie_id>', methods=['GET','POST'])
@@ -176,18 +190,18 @@ def update_movie(user_id, movie_id):
     fav = next((f for f in data_manager.get_user_favorites(user_id) if f['movie_id']==movie_id), None)
     if not fav:
         flash('Not in favorites','error')
-        return redirect(url_for('user_movies', user_id=user_id))
+        return redirect(url_for('user_profile', user_id=user_id))
     if request.method=='POST':
         data_manager.upsert_favorite(user_id, movie_id, watched='watched' in request.form, rating=float(request.form.get('rating')) if request.form.get('rating') else None, comment=request.form.get('comment'))
         flash('Updated','success')
-        return redirect(url_for('user_movies', user_id=user_id))
+        return redirect(url_for('user_profile', user_id=user_id))
     return render_template('update_movie.html', user_id=user_id, movie=fav)
 
 @app.route('/users/<int:user_id>/delete_movie/<int:movie_id>', methods=['POST'])
 def delete_movie(user_id, movie_id):
     data_manager.remove_favorite(user_id, movie_id)
     flash('Removed','success')
-    return redirect(url_for('user_movies', user_id=user_id))
+    return redirect(url_for('user_profile', user_id=user_id))
 
 if __name__=='__main__':
     app.run(debug=True, port=5001)

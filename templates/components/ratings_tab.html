@@ -1,0 +1,9 @@
+{# Ratings tab for user/movie profile #}
+<div class="ratings-tab">
+  <h3>Bewertungen</h3>
+  <ul>
+    {% for rating in ratings %}
+      <li><strong>{{ rating.user_name }}:</strong> {{ rating.value }}/10</li>
+    {% endfor %}
+  </ul>
+</div>

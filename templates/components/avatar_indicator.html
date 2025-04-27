@@ -1,0 +1,6 @@
+{# Shows avatars who have seen or interacted with a movie #}
+<div class="avatar-indicator">
+  {% for avatar in avatars %}
+    <img src="{{ avatar.image_url }}" alt="{{ avatar.name }}" title="{{ avatar.name }}" class="avatar-badge">
+  {% endfor %}
+</div>

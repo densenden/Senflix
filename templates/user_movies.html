@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% import 'components/movie_card.html' as mc %}
+{% from 'components/navigation.html' import top_nav, side_nav %}
+{% block content %}
+{{ top_nav(current_user=current_user) }}
+<div class="flex flex-row bg-black min-h-screen pt-16">
+  {{ side_nav() }}
+  <div class="flex-1">
+    <div class="container mx-auto p-4 text-white bg-black">
+      <div class="flex flex-col md:flex-row items-center gap-8 mb-8">
+        <img src="{{ url_for('static', filename='avatars/profile/avatar_' ~ user.avatar_id ~ '.jpg') }}" alt="Avatar" class="avatar-large w-32 h-32 rounded-full border-4 border-blue-500 shadow-lg">
+        <div>
+          <h2 class="text-3xl font-bold mb-2">{{ user.name }}'s Movies</h2>
+          {% if user.avatar_description %}
+            <p class="text-blue-200 italic mb-2">{{ user.avatar_description }}</p>
+          {% endif %}
+          <p class="text-blue-300">WhatsApp: {{ user.whatsapp_number }}</p>
+        </div>
+      </div>
+      <h3 class="text-2xl font-semibold mb-4">Favorites</h3>
+      {% if user.favorites %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {% for fav in user.favorites %}
+            {{ mc.movie_card(fav) }}
+          {% endfor %}
+        </div>
+      {% else %}
+        <p>No favorite movies yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

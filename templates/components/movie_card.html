@@ -1,36 +1,72 @@
 {% macro movie_card(movie) %}
-<div class="movie-card group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer transform-gpu transition-all duration-300 hover:scale-105 hover:z-10">
+<div class="movie-card group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer transform-gpu transition-all duration-300 hover:scale-105 hover:z-10"
+     onclick="window.location.href='{{ url_for('movie_detail', movie_id=movie.id) }}'">
     <!-- Movie Poster -->
-    <img src="{{ movie.omdb_data.poster_url if movie.omdb_data and movie.omdb_data.poster_url else url_for('static', filename='movies/no-poster.jpg') }}"
+    <img src="{{ url_for('static', filename='movies/' ~ movie.omdb_data.poster_img) if movie.omdb_data and movie.omdb_data.poster_img else url_for('static', filename='movies/no-poster.jpg') }}"
          alt="{{ movie.title }}"
-         class="w-full h-full object-cover">
+         class="w-full h-full object-cover movie-poster">
     
     <!-- Overlay -->
     <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
         <!-- Movie Info -->
-        <div class="absolute bottom-0 left-0 right-0 p-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-            <h3 class="text-lg font-bold mb-2">{{ movie.title }}</h3>
-            
-            <!-- Rating -->
-            <div class="flex items-center space-x-2 mb-2">
-                <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                </svg>
-                <span class="text-yellow-400">{{ "%.1f"|format(movie.rating|float) if movie.rating else 'N/A' }}</span>
-            </div>
+        <div class="absolute bottom-0 left-0 right-0 p-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300 movie-info">
+            <h3 class="text-lg font-bold mb-2 movie-title">{{ movie.title }}</h3>
             
             <!-- Genres -->
-            <div class="flex flex-wrap gap-2 mb-4">
+            <div class="flex flex-wrap gap-2 mb-4 movie-genres">
                 {% for category in movie.categories %}
-                <span class="px-2 py-1 text-xs bg-gray-800 rounded-full">{{ category.name }}</span>
+                {% set category_obj = category %}
+                {% include 'components/category_badge.html' %}
                 {% endfor %}
             </div>
             
+            <!-- Platforms -->
+            <div class="flex flex-wrap gap-2 mb-4 movie-platforms">
+                {% for platform in movie.platforms %}
+                <span class="platform">{{ platform.name }}</span>
+                {% endfor %}
+            </div>
+            
+            <!-- Rating -->
+            <div class="flex items-center space-x-2 mb-2 movie-rating">
+                <strong>Ø Community:</strong> {{ "%.1f"|format(movie.rating|float) if movie.rating else '—' }}/10
+            </div>
+            
+            <!-- Friends -->
+            <div class="flex items-center space-x-2 mb-4 movie-friends">
+                <strong>Gesehen von:</strong>
+                {% include 'components/avatar_indicator.html' with context %}
+            </div>
+            
+            <!-- Comments -->
+            <div class="movie-comments">
+                <strong>Letzte Kommentare:</strong>
+                <ul>
+                    {% for comment in movie.recent_comments %}
+                    <li>
+                        <span class="comment-avatar"><img src="{{ comment.avatar_url }}" alt="{{ comment.user_name }}" title="{{ comment.user_name }}"></span>
+                        <span class="comment-user">{{ comment.user_name }}</span>:
+                        <span class="comment-text">{{ comment.text }}</span>
+                    </li>
+                    {% else %}
+                    <li>Keine Kommentare</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            
             <!-- User Actions -->
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between movie-actions">
+                {% if movie.watched_by_user %}
+                <span class="watched-indicator">✓ Du hast diesen Film gesehen</span>
+                {% endif %}
+                {% if movie.watched_by_friends %}
+                <span class="friends-indicator">👥 Freunde haben diesen Film gesehen</span>
+                {% endif %}
+                <a href="/movie/{{ movie.id }}" class="details-link">Details & Community</a>
+                
                 <!-- Watchlist Button -->
                 <button class="action-btn watchlist" title="Add to Watchlist"
-                        onclick="toggleWatchlist({{ movie.id }})">
+                        onclick="event.stopPropagation(); toggleWatchlist({{ movie.id }})">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                               d="M12 4v16m8-8H4"/>
@@ -39,7 +75,7 @@
                 
                 <!-- Watched Button -->
                 <button class="action-btn watched" title="Mark as Watched"
-                        onclick="toggleWatched({{ movie.id }})">
+                        onclick="event.stopPropagation(); toggleWatched({{ movie.id }})">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                               d="M5 13l4 4L19 7"/>
@@ -48,7 +84,7 @@
                 
                 <!-- Rating Button -->
                 <button class="action-btn rate" title="Rate Movie"
-                        onclick="showRatingModal({{ movie.id }})">
+                        onclick="event.stopPropagation(); showRatingModal({{ movie.id }})">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                               d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
@@ -68,4 +104,4 @@
         </div>
     </div>
 </div>
-{% endmacro %} 
+{% endmacro %}

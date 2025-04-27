@@ -96,7 +96,21 @@ class SQLiteDataManager(DataManagerInterface):
 
     def get_user_favorites(self, user_id):
         try:
-            return [f.to_dict() for f in UserFavorite.query.filter_by(user_id=user_id).all()]
+            # Return movie dicts, not just favorite metadata
+            favorites = UserFavorite.query.filter_by(user_id=user_id).all()
+            movies = []
+            for f in favorites:
+                m = self._get(Movie, id=f.movie_id)
+                if m:
+                    movie_dict = m.to_dict()
+                    # Attach favorite metadata to movie dict
+                    movie_dict['watched'] = f.watched
+                    movie_dict['comment'] = f.comment
+                    movie_dict['rating'] = f.rating
+                    movie_dict['watchlist'] = f.watchlist
+                    movie_dict['movie_id'] = f.movie_id  # for clarity
+                    movies.append(movie_dict)
+            return movies
         except SQLAlchemyError as e:
             logger.error(f"Error getting favorites: {e}"); return []
 
@@ -118,6 +132,58 @@ class SQLiteDataManager(DataManagerInterface):
 
     def get_all_platforms(self):
         return self._all(StreamingPlatform)
+
+    # CATEGORY & PLATFORM METHODS
+    def get_all_categories(self):
+        return self._all(Category)
+
+    # MOVIE FILTERING METHODS
+    def get_movies_by_platform(self, platform_id):
+        platform = self._get(StreamingPlatform, id=platform_id)
+        return [m.to_dict() for m in platform.movies] if platform else []
+
+    def get_top_rated_movies(self, limit=10):
+        movies = Movie.query.outerjoin(UserFavorite).group_by(Movie.id).order_by(db.func.avg(UserFavorite.rating).desc()).limit(limit).all()
+        return [m.to_dict() for m in movies]
+
+    def get_recent_commented_movies(self, limit=10):
+        movies = Movie.query.join(UserFavorite).filter(UserFavorite.comment != None).order_by(UserFavorite.user_id.desc()).limit(limit).all()
+        return [m.to_dict() for m in movies]
+
+    def get_popular_movies(self, limit=10):
+        movies = Movie.query.outerjoin(UserFavorite).group_by(Movie.id).order_by(db.func.count(UserFavorite.user_id).desc()).limit(limit).all()
+        return [m.to_dict() for m in movies]
+
+    # SOCIAL METHODS
+    def get_friends_favorites(self, user_id, limit=10):
+        user = self._get(User, id=user_id)
+        if not user:
+            return []
+        # Example: friends = all users except current user
+        friends = User.query.filter(User.id != user_id).all()
+        friend_ids = [f.id for f in friends]
+        favs = UserFavorite.query.filter(UserFavorite.user_id.in_(friend_ids), UserFavorite.watched==True).order_by(UserFavorite.user_id.desc()).limit(limit).all()
+        movie_ids = list({f.movie_id for f in favs})
+        return [self.get_movie_data(mid) for mid in movie_ids]
+
+    # RATING & COMMENT METHODS
+    def add_rating(self, user_id, movie_id, rating, comment=None):
+        fav = UserFavorite.query.filter_by(user_id=user_id, movie_id=movie_id).first()
+        if not fav:
+            fav = UserFavorite(user_id=user_id, movie_id=movie_id)
+            db.session.add(fav)
+        fav.rating = rating
+        fav.comment = comment
+        db.session.commit()
+        return fav.to_dict()
+
+    def get_movie_ratings(self, movie_id):
+        favs = UserFavorite.query.filter_by(movie_id=movie_id).filter(UserFavorite.rating != None).all()
+        return [f.to_dict() for f in favs]
+
+    def get_movie_average_rating(self, movie_id):
+        avg = db.session.query(db.func.avg(UserFavorite.rating)).filter_by(movie_id=movie_id).scalar()
+        return round(avg, 2) if avg else None
 
     # Implement abstract methods
     def add_favorite(self, user_id, movie_id, watched=False, comment=None, rating=None, watchlist=False):

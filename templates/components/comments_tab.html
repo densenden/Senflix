@@ -1,0 +1,9 @@
+{# Comments tab for user/movie profile #}
+<div class="comments-tab">
+  <h3>Kommentare</h3>
+  <ul>
+    {% for comment in comments %}
+      <li><strong>{{ comment.user_name }}:</strong> {{ comment.text }}</li>
+    {% endfor %}
+  </ul>
+</div>
