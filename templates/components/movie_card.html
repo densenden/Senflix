@@ -32,7 +32,7 @@
       </div>
     </div>
     <script>
-    // Apple TV-style 3D tilt (increased effect, only rotate, more movement)
+    // Apple TV-style 3D tilt (mouse movement changes tilt in all directions)
     document.addEventListener('DOMContentLoaded', function() {
       document.querySelectorAll('.movie-card').forEach(function(card) {
         let tilt = (e) => {
@@ -43,7 +43,8 @@
           const cy = rect.height / 2;
           const dx = (x - cx) / cx;
           const dy = (y - cy) / cy;
-          card.style.transform = `rotateY(${dx*24}deg) rotateX(${-dy*24}deg)`;
+          // Apple TV effect: both axes, perspective, and a little scale
+          card.style.transform = `rotateY(${dx*18}deg) rotateX(${-dy*18}deg) scale3d(1.04,1.04,1.04)`;
         };
         card.addEventListener('mousemove', tilt);
         card.addEventListener('mouseleave', () => {

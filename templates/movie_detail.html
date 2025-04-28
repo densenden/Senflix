@@ -1,20 +1,20 @@
-{# Movie Detail Page: Inhalte & Bewertungsoptionen #}
+{# Movie Detail Page: Content & Rating Options #}
 {% extends 'base.html' %}
 {% from 'components/navigation.html' import top_nav %}
 {% block content %}
 {{ top_nav(current_user=current_user) }}
 <main class="w-full min-h-screen bg-black text-white">
-  <section class="w-full max-w-7xl mx-auto px-4 py-8">
+  <section class="w-full max-w-7xl mx-auto px-4 py-12">
+    <h1 class="text-5xl font-extrabold mb-8 mt-6">{{ movie.title }}</h1>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-      <div class="flex justify-center md:justify-end">
+      <div class="flex flex-col items-center md:items-end">
         {% from 'components/movie_card.html' import movie_card %}
         <div class="max-w-xs w-full">
           {{ movie_card(movie) }}
         </div>
       </div>
       <div class="md:col-span-2 flex flex-col gap-2">
-        <h1 class="text-4xl md:text-5xl font-extrabold mb-2">{{ movie.title }}</h1>
-        <div class="flex flex-wrap gap-2 mb-1">
+        <div class="flex flex-wrap gap-6 mb-8">
           {% for category in movie.categories %}
             {% set category_obj = category %}
             {% include 'components/category_badge.html' %}

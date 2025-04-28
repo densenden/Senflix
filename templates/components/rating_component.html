@@ -7,7 +7,7 @@
         <label for="star{{ i }}">★</label>
       {% endfor %}
     </div>
-    <textarea name="comment" placeholder="Kommentar...">{{ comment or '' }}</textarea>
+    <textarea name="comment" placeholder="Add comment">{{ comment or '' }}</textarea>
     <input type="hidden" name="avatar_id" value="{{ avatar_id }}">
     <button type="submit">Bewerten</button>
   </form>
