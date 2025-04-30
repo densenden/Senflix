@@ -50,6 +50,12 @@ SenFlix/
   └── README.md
 ```
 
+## Database Schema
+
+The following diagram illustrates the database structure:
+
+![Database Schema](db_schema.png)
+
 ## Core Contracts (interface.py)
 | Name                | Type        | Description                                                      |
 |---------------------|-------------|------------------------------------------------------------------|
