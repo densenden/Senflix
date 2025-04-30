@@ -88,8 +88,16 @@ class SQLiteDataManager(DataManagerInterface):
     def get_movie_data(self, movie_id):
         """Get detailed movie data including relationships."""
         try:
-            movie = Movie.query.get(movie_id)
-            return movie.to_dict() if movie else None
+            # Ensure OMDB data and other relationships are loaded
+            movie = Movie.query.options(
+                joinedload(Movie.omdb_data), 
+                subqueryload(Movie.categories),
+                subqueryload(Movie.streaming_platforms)
+            ).get(movie_id)
+            
+            if movie:
+                return movie.to_dict()
+            return None
         except Exception as e:
             logger.error(f"Error getting movie data for {movie_id}: {e}")
             return None
@@ -317,7 +325,17 @@ class SQLiteDataManager(DataManagerInterface):
                 subqueryload(Movie.streaming_platforms),
                 subqueryload(Movie.categories)
             ).outerjoin(UserFavorite).group_by(Movie.id).order_by(db.func.avg(UserFavorite.rating).desc().nullslast()).limit(limit).offset(offset).all()
-            return [movie.to_dict() for movie in movies]
+            
+            # Fallback-Logik für fehlende omdb_data
+            movie_dicts = []
+            for movie in movies:
+                movie_dict = movie.to_dict()
+                if not movie_dict.get('omdb_data'):
+                    movie_dict['omdb_data'] = {'poster_img': 'no-poster.jpg'}
+                elif not movie_dict['omdb_data'].get('poster_img'):
+                    movie_dict['omdb_data']['poster_img'] = 'no-poster.jpg'
+                movie_dicts.append(movie_dict)
+            return movie_dicts
         except Exception as e:
             logger.error(f"Error getting top rated movies: {e}")
             return []
@@ -332,8 +350,7 @@ class SQLiteDataManager(DataManagerInterface):
                 joinedload(UserFavorite.movie).subqueryload(Movie.streaming_platforms),
                 joinedload(UserFavorite.movie).subqueryload(Movie.categories)
             ).filter(UserFavorite.comment.isnot(None)).limit(limit).offset(offset).all() # Removed order_by
-            # Return the movie data from the favorite object
-            # Note: The order is not guaranteed (depends on DB query plan)
+            
             return [fav.movie.to_dict() for fav in favorites]
         except Exception as e:
             logger.error(f"Error getting recent commented movies: {e}")
@@ -349,6 +366,7 @@ class SQLiteDataManager(DataManagerInterface):
                 subqueryload(Movie.streaming_platforms),
                 subqueryload(Movie.categories)
             ).outerjoin(UserFavorite).group_by(Movie.id).order_by(db.func.count(UserFavorite.movie_id).desc().nullslast()).limit(limit).offset(offset).all()
+            
             return [movie.to_dict() for movie in movies]
         except Exception as e:
             logger.error(f"Error getting popular movies: {e}")
@@ -548,7 +566,31 @@ class SQLiteDataManager(DataManagerInterface):
         try:
             # Ensure OMDB data is loaded
             movies = Movie.query.options(joinedload(Movie.omdb_data)).order_by(Movie.year.desc()).limit(limit).offset(offset).all()
-            return [movie.to_dict() for movie in movies]
+            
+            # Fallback-Logik für fehlende omdb_data
+            movie_dicts = []
+            for movie in movies:
+                movie_dict = movie.to_dict()
+                if not movie_dict.get('omdb_data'):
+                    movie_dict['omdb_data'] = {'poster_img': 'no-poster.jpg'}
+                elif not movie_dict['omdb_data'].get('poster_img'):
+                    movie_dict['omdb_data']['poster_img'] = 'no-poster.jpg'
+                movie_dicts.append(movie_dict)
+            return movie_dicts
         except Exception as e:
             logger.error(f"Error getting new releases: {e}")
             return []
+
+    def to_dict(self):
+        """Convert movie to dictionary."""
+        return {
+            'id': self.id,
+            'title': self.title,
+            'year': self.year,
+            'imdb_id': self.imdb_id,
+            'omdb_data': self.omdb_data.to_dict() if self.omdb_data else None,
+            'streaming_platforms': [platform.to_dict() for platform in self.streaming_platforms],
+            'categories': [category.to_dict() for category in self.categories],
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }

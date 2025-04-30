@@ -5,6 +5,19 @@
 {% block title %}Movies - SenFlix{% endblock %}
 
 {% block content %}
+<!-- Debug Skript -->
+<script>
+  // Einige Filme in der Konsole ausgeben, wenn die Seite geladen wird
+  window.addEventListener('DOMContentLoaded', function() {
+    console.log('====== DEBUG FILM DATEN ======');
+    {% if new_releases %}
+      console.log('Erster New Release Film:', {{ new_releases[0] | tojson }});
+    {% endif %}
+    {% if popular_movies %}
+      console.log('Erster Popular Film:', {{ popular_movies[0] | tojson }});
+    {% endif %}
+  });
+</script>
 {% set anchors = [
     {'id': 'new-releases', 'label': 'New Releases'},
     {'id': 'popular', 'label': 'Popular'},
@@ -84,16 +97,10 @@
           {% for movie in recent_comments %}
             <div class="bg-gray-900/90 rounded-xl p-4 shadow-lg">
               <div class="flex items-center gap-4">
-                {% if movie.omdb_data and movie.omdb_data.effective_poster %}
-                  {% if movie.omdb_data.poster_img %}
-                    <img src="{{ url_for('static', filename='movies/' + movie.omdb_data.poster_img) }}" 
-                         alt="{{ movie.name }}" 
-                         class="w-16 h-24 object-cover rounded-md">
-                  {% else %}
-                    <img src="{{ movie.omdb_data.poster_url }}" 
-                         alt="{{ movie.name }}" 
-                         class="w-16 h-24 object-cover rounded-md">
-                  {% endif %}
+                {% if movie.omdb_data and movie.omdb_data.poster_img %}
+                  <img src="{{ url_for('static', filename='movies/' ~ movie.omdb_data.poster_img) }}" 
+                       alt="{{ movie.name }}" 
+                       class="w-16 h-24 object-cover rounded-md">
                 {% else %}
                   <div class="w-16 h-24 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center rounded-md">
                     <span class="text-gray-300 text-xs">{{ movie.name[:10] }}{% if movie.name|length > 10 %}...{% endif %}</span>
@@ -186,7 +193,7 @@
 </style>
 
 <!-- Rating Modal -->
-<div id="ratingModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center">
+<div id="ratingModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-[9999]">
   <div class="bg-gray-900 p-6 rounded-lg max-w-md w-full mx-4">
     <h2 class="text-2xl font-bold mb-6">Rate Movie</h2>
     
@@ -232,22 +239,17 @@
 </div>
 
 <script>
-// Fallback-URL für fehlende Bilder global setzen
-const NO_POSTER_URL = "{{ url_for('static', filename='images/no-poster.jpg') }}";
-
+// Entferne die globale Fallback-URL
 document.addEventListener('DOMContentLoaded', function() {
+  // Entferne die Fallback-Image-Logik
   const fallbackImgs = document.querySelectorAll('.fallback-img');
-  
-  fallbackImgs.forEach(img => {
-    img.addEventListener('error', function() {
-      this.src = NO_POSTER_URL;
-    });
-  });
-  
-  // Überprüfe, ob Bilder bereits fehlerhaft geladen wurden
   fallbackImgs.forEach(img => {
     if (img.complete && img.naturalHeight === 0) {
-      img.src = NO_POSTER_URL;
+      img.parentElement.innerHTML = `
+        <div class="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center rounded-lg">
+          <span class="text-gray-300 text-xs">No Image</span>
+        </div>
+      `;
     }
   });
 });

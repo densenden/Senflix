@@ -6,6 +6,12 @@
     <title>{% block title %}SenFlix{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Debug-Info ausblenden, sofern nicht über URL aktiviert */
+        .movie-debug-info {
+            display: none;
+        }
+    </style>
 </head>
 <body class="bg-black text-white font-sf min-h-screen w-full">
     <div id="app-root" class="w-full min-h-screen flex flex-col">

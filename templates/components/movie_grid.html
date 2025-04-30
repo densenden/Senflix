@@ -8,9 +8,10 @@
         {% for movie in movies %}
         <div class="movie-card" data-movie-id="{{ movie.id }}">
             <div class="movie-poster">
-                <img src="{{ url_for('static', filename='movies/' + movie.img) }}" 
+                <img src="/static/movies/{{ movie.img }}" 
                      alt="{{ movie.title }}" 
-                     class="w-full h-full object-cover">
+                     class="w-full h-full object-cover"
+                     onerror="this.src='/static/movies/no-poster.jpg'">
                 <div class="movie-overlay">
                     <div class="movie-info">
                         <h3 class="text-lg font-bold">{{ movie.title }}</h3>

@@ -207,6 +207,9 @@ class Movie(db.Model):
             'genre': self.genre
         }
         if include_relationships:
+            # Debug-Log für OMDB-Daten hinzufügen
+            if not self.omdb_data:
+                logger.warning(f"Movie {self.id} ({self.name}) has no OMDB data")
             movie_dict.update({
                 'category': self.category.to_dict() if self.category else None,
                 'categories': [c.to_dict(include_relationships=False) for c in self.categories],
@@ -358,7 +361,7 @@ class MovieOMDB(db.Model):
     @property
     def effective_poster(self):
         """Returns the effective poster image filename or URL"""
-        if hasattr(self, 'poster_img') and self.poster_img:
+        if self.poster_img:
             return self.poster_img
         return None
 
@@ -380,7 +383,7 @@ class MovieOMDB(db.Model):
             'language': self.language,
             'country': self.country,
             'awards': self.awards,
-            'poster_img': self.poster_img if hasattr(self, 'poster_img') else None,
+            'poster_img': self.poster_img,
             'effective_poster': self.effective_poster
         }
         

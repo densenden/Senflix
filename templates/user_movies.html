@@ -57,7 +57,13 @@
             {% for fav in last_comments %}
               <div class="bg-gray-900/90 rounded-xl p-4 shadow-lg flex flex-col gap-2">
                 <div class="flex items-center gap-4">
-                  <img src="{{ url_for('static', filename=fav.poster_img if fav.poster_img else 'movies/default.jpg') }}" alt="Poster" class="w-16 h-24 object-cover rounded-md border border-gray-700">
+                  {% if fav.omdb_data and fav.omdb_data.poster_img %}
+                    <img src="{{ url_for('static', filename='movies/' ~ fav.omdb_data.poster_img) }}" alt="Poster" class="w-16 h-24 object-cover rounded-md border border-gray-700">
+                  {% else %}
+                    <div class="w-16 h-24 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center rounded-md border border-gray-700">
+                      <span class="text-gray-300 text-xs">{{ fav.name[:10] }}{% if fav.name|length > 10 %}...{% endif %}</span>
+                    </div>
+                  {% endif %}
                   <div>
                     <div class="font-bold text-lg">{{ fav.name }}</div>
                     <div class="text-gray-400 text-sm">{{ fav.year }}</div>

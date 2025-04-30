@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from datamanager.db_manager import SQLiteDataManager
 from datamanager.interface import User, Avatar, Category, Movie, StreamingPlatform, UserFavorite
 from datamanager.omdb_manager import OMDBManager
+from sqlalchemy.orm import joinedload
 
 load_dotenv()
 app = Flask(__name__)
@@ -83,7 +84,6 @@ def select_user(user_id):
 
 @app.route('/movies')
 def movies():
-    # Globalen data_manager verwenden statt einen neuen zu erstellen
     
     # Get all required movie lists
     try:
@@ -96,8 +96,28 @@ def movies():
         # Debug prints with detailed movie structure
         if new_releases:
             print("[DEBUG] Sample New Release Movie Structure:", new_releases[0])
+            # Überprüfe OMDB-Daten im ersten Film
+            omdb_data = new_releases[0].get('omdb_data', {})
+            print(f"[DEBUG] OMDB Daten vorhanden: {omdb_data is not None}")
+            print(f"[DEBUG] OMDB Daten Typ: {type(omdb_data)}")
+            if omdb_data:
+                poster_img = omdb_data.get('poster_img')
+                print(f"[DEBUG] Poster Bild: {poster_img}")
+                print(f"[DEBUG] Vollständige OMDB Daten: {omdb_data}")
+            # Prüfe, ob omdb_data und poster_img vorhanden sind
+            omdb_data = new_releases[0].get('omdb_data', {})
+            poster_img = omdb_data.get('poster_img', 'FEHLT!')
+            print(f"[DEBUG] Erstes Film omdb_data: {omdb_data}")
+            print(f"[DEBUG] Erstes Film poster_img: {poster_img}")
+
         if popular_movies:
             print("[DEBUG] Sample Popular Movie Structure:", popular_movies[0])
+            # Prüfe, ob omdb_data und poster_img vorhanden sind
+            omdb_data = popular_movies[0].get('omdb_data', {})
+            poster_img = omdb_data.get('poster_img', 'FEHLT!')
+            print(f"[DEBUG] Beliebter Film omdb_data: {omdb_data}")
+            print(f"[DEBUG] Beliebter Film poster_img: {poster_img}")
+        
         if top_rated:
             print("[DEBUG] Sample Top Rated Movie Structure:", top_rated[0])
         if recent_comments:
@@ -128,71 +148,7 @@ def movies():
         categories = []
         platforms = []
     
-    # Stelle sicher, dass alle Movie-Objekte eine id haben
-    def ensure_movie_id(movie):
-        if isinstance(movie, dict) and 'id' not in movie:
-            movie['id'] = movie.get('movie_id', None)
-        return movie
-    
-    new_releases = [ensure_movie_id(m) for m in new_releases]
-    popular_movies = [ensure_movie_id(m) for m in popular_movies]
-    top_rated = [ensure_movie_id(m) for m in top_rated]
-    recent_comments = [ensure_movie_id(m) for m in recent_comments]
-    friends_favorites = [ensure_movie_id(m) for m in friends_favorites]
-    all_movies = [ensure_movie_id(m) for m in all_movies]
-    
-    # --- CHECK if all_movies has data --- 
-    print(f"[DEBUG] Length of all_movies before fallback: {len(all_movies)}")
-    if all_movies:
-        print(f"[DEBUG] First movie in all_movies: ID {all_movies[0].get('id')}, Name {all_movies[0].get('name')}")
-    else:
-        print("[DEBUG] all_movies is EMPTY!")
 
-    # --- FALLBACK FOR EMPTY LISTS --- 
-    if not new_releases and all_movies:
-        print("[DEBUG] Populating New Releases with fallback data.")
-        new_releases = all_movies[:10] # Take first 10 as fallback
-    if not popular_movies and all_movies:
-        print("[DEBUG] Populating Popular Movies with fallback data.")
-        # Ensure slice indices are valid and don't overlap excessively if all_movies is short
-        start_index = min(10, len(all_movies))
-        end_index = min(20, len(all_movies))
-        popular_movies = all_movies[start_index:end_index] 
-    if not top_rated and all_movies:
-        print("[DEBUG] Populating Top Rated with fallback data.")
-        start_index = min(20, len(all_movies))
-        end_index = min(30, len(all_movies))
-        top_rated = all_movies[start_index:end_index]
-    if not recent_comments and all_movies:
-        print("[DEBUG] Populating Recent Comments with fallback data.")
-        # Maybe show last 5 movies added as a fallback?
-        start_index = max(0, len(all_movies) - 5) # Get last 5 indices
-        recent_comments = all_movies[start_index:]
-        
-    # --- Remove detailed debugging --- 
-    # print("\n--- Detailed Movie Data Check ---")
-    # def print_movie_debug(label, movie_list):
-    #     print(f"\n{label} (Count: {len(movie_list)}):")
-    #     if movie_list:
-    #         sample_movie = movie_list[0]
-    #         print(f"  Sample Movie (ID: {sample_movie.get('id')}, Name: {sample_movie.get('name')}):")
-    #         if isinstance(sample_movie, dict):
-    #             omdb_data = sample_movie.get('omdb_data')
-    #             if omdb_data:
-    #                 print(f"    omdb_data found. Keys: {list(omdb_data.keys())}")
-    #                 print(f"    poster_img: {omdb_data.get('poster_img', 'MISSING')}")
-    #             else:
-    #                 print(f"    omdb_data: None or MISSING")
-    #         else:
-    #             print(f"    Sample is not a dict: {type(sample_movie)}")
-    #     else:
-    #         print("  List is empty.")
-            
-    # print_movie_debug("New Releases", new_releases)
-    # print_movie_debug("Popular Movies", popular_movies)
-    # print_movie_debug("Top Rated", top_rated)
-    # print_movie_debug("Recent Comments", recent_comments)
-    # print("--- End Detailed Movie Data Check ---\n")
 
     return render_template('movies.html',
                          movies=all_movies,
