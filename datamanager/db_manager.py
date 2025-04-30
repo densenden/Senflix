@@ -289,7 +289,11 @@ class SQLiteDataManager(DataManagerInterface):
         return [p.to_dict() for p in platforms]
 
     def get_all_categories(self):
-        categories = self._all(Category)
+        # Ensure related movies and their OMDB data are loaded
+        categories = self._all(Category, options=[
+            subqueryload(Category.movies).joinedload(Movie.omdb_data),
+            subqueryload(Category.movies_m2m).joinedload(Movie.omdb_data) # Also load for the M2M relationship
+        ])
         return [c.to_dict() for c in categories]
 
     def get_movies_by_platform(self, platform_id: int):

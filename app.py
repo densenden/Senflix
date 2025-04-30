@@ -141,33 +141,58 @@ def movies():
     friends_favorites = [ensure_movie_id(m) for m in friends_favorites]
     all_movies = [ensure_movie_id(m) for m in all_movies]
     
-    # --- DETAILED DEBUGGING --- 
-    print("\n--- Detailed Movie Data Check ---")
-    def print_movie_debug(label, movie_list):
-        print(f"\n{label} (Count: {len(movie_list)}):")
-        if movie_list:
-            # Print first movie structure
-            sample_movie = movie_list[0]
-            print(f"  Sample Movie (ID: {sample_movie.get('id')}, Name: {sample_movie.get('name')}):")
-            if isinstance(sample_movie, dict):
-                omdb_data = sample_movie.get('omdb_data')
-                if omdb_data:
-                    print(f"    omdb_data found. Keys: {list(omdb_data.keys())}")
-                    print(f"    poster_img: {omdb_data.get('poster_img', 'MISSING')}")
-                else:
-                    print(f"    omdb_data: None or MISSING")
-            else:
-                print(f"    Sample is not a dict: {type(sample_movie)}")
-        else:
-            print("  List is empty.")
+    # --- CHECK if all_movies has data --- 
+    print(f"[DEBUG] Length of all_movies before fallback: {len(all_movies)}")
+    if all_movies:
+        print(f"[DEBUG] First movie in all_movies: ID {all_movies[0].get('id')}, Name {all_movies[0].get('name')}")
+    else:
+        print("[DEBUG] all_movies is EMPTY!")
+
+    # --- FALLBACK FOR EMPTY LISTS --- 
+    if not new_releases and all_movies:
+        print("[DEBUG] Populating New Releases with fallback data.")
+        new_releases = all_movies[:10] # Take first 10 as fallback
+    if not popular_movies and all_movies:
+        print("[DEBUG] Populating Popular Movies with fallback data.")
+        # Ensure slice indices are valid and don't overlap excessively if all_movies is short
+        start_index = min(10, len(all_movies))
+        end_index = min(20, len(all_movies))
+        popular_movies = all_movies[start_index:end_index] 
+    if not top_rated and all_movies:
+        print("[DEBUG] Populating Top Rated with fallback data.")
+        start_index = min(20, len(all_movies))
+        end_index = min(30, len(all_movies))
+        top_rated = all_movies[start_index:end_index]
+    if not recent_comments and all_movies:
+        print("[DEBUG] Populating Recent Comments with fallback data.")
+        # Maybe show last 5 movies added as a fallback?
+        start_index = max(0, len(all_movies) - 5) # Get last 5 indices
+        recent_comments = all_movies[start_index:]
+        
+    # --- Remove detailed debugging --- 
+    # print("\n--- Detailed Movie Data Check ---")
+    # def print_movie_debug(label, movie_list):
+    #     print(f"\n{label} (Count: {len(movie_list)}):")
+    #     if movie_list:
+    #         sample_movie = movie_list[0]
+    #         print(f"  Sample Movie (ID: {sample_movie.get('id')}, Name: {sample_movie.get('name')}):")
+    #         if isinstance(sample_movie, dict):
+    #             omdb_data = sample_movie.get('omdb_data')
+    #             if omdb_data:
+    #                 print(f"    omdb_data found. Keys: {list(omdb_data.keys())}")
+    #                 print(f"    poster_img: {omdb_data.get('poster_img', 'MISSING')}")
+    #             else:
+    #                 print(f"    omdb_data: None or MISSING")
+    #         else:
+    #             print(f"    Sample is not a dict: {type(sample_movie)}")
+    #     else:
+    #         print("  List is empty.")
             
-    print_movie_debug("New Releases", new_releases)
-    print_movie_debug("Popular Movies", popular_movies)
-    print_movie_debug("Top Rated", top_rated)
-    print_movie_debug("Recent Comments", recent_comments)
-    # print_movie_debug("All Movies", all_movies) # Might be too long
-    print("--- End Detailed Movie Data Check ---\n")
-    # --- END DEBUGGING ---
+    # print_movie_debug("New Releases", new_releases)
+    # print_movie_debug("Popular Movies", popular_movies)
+    # print_movie_debug("Top Rated", top_rated)
+    # print_movie_debug("Recent Comments", recent_comments)
+    # print("--- End Detailed Movie Data Check ---\n")
 
     return render_template('movies.html',
                          movies=all_movies,
