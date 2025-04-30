@@ -25,37 +25,19 @@ movie_categories = db.Table('movie_categories',
 
 class Avatar(db.Model):
     """
-    Represents user avatar images in the system.
+    Represents an avatar image for a user.
     """
     __tablename__ = 'avatars'
     
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=False)
-    image = db.Column(db.String(255), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
     
-    # Relationships
-    users = db.relationship('User', back_populates='avatar', lazy='dynamic')
-    
-    @validates('name')
-    def validate_name(self, key, name):
-        if not name or len(name) > 100:
-            raise ValueError("Name must be between 1 and 100 characters")
-        return name
-    
-    @validates('description')
-    def validate_description(self, key, description):
-        if not description:
-            raise ValueError("Description is required")
-        return description
-
-    @property
-    def profile_image_url(self):
-        return f"avatars/profile/{self.image}" if self.image else "avatars/default.png"
-
-    @property
-    def hero_image_url(self):
-        return f"avatars/hero/{self.image}" if self.image else "avatars/default_hero.png"
+    def to_dict(self):
+        """Convert avatar object to dictionary."""
+        return {
+            'id': self.id,
+            'filename': self.filename
+        }
 
 class User(db.Model):
     """
@@ -65,13 +47,13 @@ class User(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    whatsapp_number = db.Column(db.String(20), nullable=False, unique=True)
-    avatar_id = db.Column(db.Integer, db.ForeignKey('avatars.id'), nullable=False)
+    whatsapp_number = db.Column(db.String(20), unique=True, nullable=False)
+    avatar_id = db.Column(db.Integer, db.ForeignKey('avatars.id'), default=1)
     
     # Relationships
-    avatar = db.relationship('Avatar', back_populates='users')
-    favorites = db.relationship('UserFavorite', backref='user', lazy='dynamic')
-
+    avatar = db.relationship('Avatar')
+    favorites = db.relationship('UserFavorite', back_populates='user')
+    
     @validates('name')
     def validate_name(self, key, name):
         if not name or len(name) > 100:
@@ -91,7 +73,7 @@ class User(db.Model):
             'name': self.name,
             'whatsapp_number': self.whatsapp_number,
             'avatar_id': self.avatar_id,
-            'favorites': [f.to_dict() for f in self.favorites]
+            'avatar': self.avatar.to_dict() if self.avatar else None
         }
 
     # Flask-Login integration for User
@@ -118,11 +100,14 @@ class Movie(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    release_year = db.Column(db.Integer)
+    duration_minutes = db.Column(db.Integer)
     
     # Relationships
-    platforms = db.relationship('StreamingPlatform', secondary='movie_platforms', lazy='dynamic',
+    platforms = db.relationship('StreamingPlatform', secondary='movie_platforms',
                               backref=db.backref('movies', lazy=True))
-    categories = db.relationship('Category', secondary='movie_categories', lazy='dynamic',
+    categories = db.relationship('Category', secondary='movie_categories',
                                backref=db.backref('movies', lazy=True))
     omdb_data = db.relationship("MovieOMDB", back_populates="movie", uselist=False, cascade='all, delete-orphan')
     favorites = db.relationship('UserFavorite', back_populates='movie', cascade='all, delete-orphan')
@@ -138,6 +123,9 @@ class Movie(db.Model):
         return {
             'id': self.id,
             'name': self.name,
+            'description': self.description,
+            'release_year': self.release_year,
+            'duration_minutes': self.duration_minutes,
             'plot': self.omdb_data.plot if hasattr(self, 'omdb_data') and self.omdb_data else None,
             'platforms': [p.to_dict() for p in self.platforms],
             'categories': [c.to_dict() for c in self.categories],
@@ -146,7 +134,7 @@ class Movie(db.Model):
 
 class UserFavorite(db.Model):
     """
-    Represents a user's favorite movie with additional metadata.
+    Represents a user's favorite movie.
     """
     __tablename__ = 'user_favorites'
     
@@ -156,8 +144,11 @@ class UserFavorite(db.Model):
     comment = db.Column(db.Text)
     rating = db.Column(db.Float)
     watchlist = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
+    user = db.relationship('User', back_populates='favorites')
     movie = db.relationship('Movie', back_populates='favorites')
     
     @validates('rating')
@@ -174,7 +165,10 @@ class UserFavorite(db.Model):
             'watched': self.watched,
             'comment': self.comment,
             'rating': self.rating,
-            'watchlist': self.watchlist
+            'watchlist': self.watchlist,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'user': self.user.to_dict() if self.user else None
         }
 
 class StreamingPlatform(db.Model):
@@ -185,6 +179,7 @@ class StreamingPlatform(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False, unique=True)
+    url = db.Column(db.String(255))
     
     @validates('name')
     def validate_name(self, key, name):
@@ -196,7 +191,8 @@ class StreamingPlatform(db.Model):
         """Convert platform object to dictionary."""
         return {
             'id': self.id,
-            'name': self.name
+            'name': self.name,
+            'url': self.url
         }
 
 class Category(db.Model):
@@ -253,6 +249,7 @@ class MovieOMDB(db.Model):
     country = db.Column(db.String(50))
     awards = db.Column(db.String(255))
     poster_img = db.Column(db.String(255))
+    external_poster_url = db.Column(db.String(255))  # Umbenannt von poster_url
     imdb_rating = db.Column(db.Float)
     rotten_tomatoes = db.Column(db.String(10))
     metacritic = db.Column(db.String(10))
@@ -269,7 +266,7 @@ class MovieOMDB(db.Model):
     def poster_url(self):
         """Returns the full path for the poster image"""
         if not self.poster_img:
-            return None
+            return self.external_poster_url
         return f"static/movies/{self.poster_img}"
 
     def to_dict(self):
@@ -292,6 +289,7 @@ class MovieOMDB(db.Model):
             'awards': self.awards,
             'poster_img': self.poster_img,
             'poster_url': self.poster_url,
+            'external_poster_url': self.external_poster_url,
             'imdb_rating': self.imdb_rating,
             'rotten_tomatoes': self.rotten_tomatoes,
             'metacritic': self.metacritic,
