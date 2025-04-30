@@ -170,12 +170,19 @@ def search():
 
 @app.route('/users')
 def users():
-    groups = {i:{'name':f'Avatar {i}','users':[], 'img_url':url_for('static', filename=f'avatars/hero/avatar_{i}.jpg')} for i in range(1,12)}
-    for u in data_manager.get_all_users():
-        aid=u['avatar_id']
-        groups[aid]['users'].append(u)
-    active=[g for g in groups.values() if g['users']]
-    return render_template('users.html', avatar_groups=active)
+    avatars = Avatar.query.all()
+    avatar_groups = []
+    for avatar in avatars:
+        users = avatar.users.all()
+        if not users:
+            continue
+        group = {
+            'name': avatar.name,
+            'img_url': url_for('static', filename=avatar.hero_image_url),
+            'users': [data_manager.get_user_data(u.id) for u in users]
+        }
+        avatar_groups.append(group)
+    return render_template('users.html', avatar_groups=avatar_groups)
 
 @app.route('/users/<int:user_id>')
 @login_required
@@ -184,7 +191,20 @@ def user_profile(user_id):
     if not user:
         flash('User not found', 'error')
         return redirect(url_for('movies'))
-    return render_template('user_movies.html', user=user)
+    # Separate favorites into watched and watchlist
+    favorites = user.get('favorites', [])
+    watched = [f for f in favorites if f.get('watched')]
+    watchlist = [f for f in favorites if f.get('watchlist')]
+    # Last comments (show up to 3, most recent last)
+    comments = [f for f in favorites if f.get('comment')]
+    last_comments = comments[-3:] if comments else []
+    return render_template(
+        'user_movies.html',
+        user=user,
+        watched=watched,
+        watchlist=watchlist,
+        last_comments=last_comments
+    )
 
 @app.route('/users/<int:user_id>/add_movie', methods=['GET','POST'])
 @login_required

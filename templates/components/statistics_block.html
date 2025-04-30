@@ -1,8 +1,11 @@
 {# Statistics block for user or movie #}
-<div class="statistics-block">
-  <ul>
+<div class="statistics-block bg-gray-900/80 rounded-2xl p-6 shadow-lg mb-8">
+  <ul class="space-y-3">
     {% for stat in statistics %}
-      <li>{{ stat.label }}: {{ stat.value }}</li>
+      <li class="bg-gray-800/80 rounded-xl px-4 py-2 text-gray-200 flex justify-between items-center">
+        <span class="font-semibold text-indigo-200">{{ stat.label }}</span>
+        <span class="font-bold">{{ stat.value }}</span>
+      </li>
     {% endfor %}
   </ul>
 </div>

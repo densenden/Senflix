@@ -1,9 +1,9 @@
 {# Comments tab for user/movie profile #}
-<div class="comments-tab">
-  <h3>Kommentare</h3>
-  <ul>
+<div class="comments-tab bg-gray-900/80 rounded-2xl p-6 shadow-lg mb-8">
+  <h3 class="text-xl font-bold mb-4 text-white">Kommentare</h3>
+  <ul class="space-y-3">
     {% for comment in comments %}
-      <li><strong>{{ comment.user_name }}:</strong> {{ comment.text }}</li>
+      <li class="bg-gray-800/80 rounded-xl px-4 py-2 text-gray-200"><strong class="text-indigo-300">{{ comment.user_name }}:</strong> {{ comment.text }}</li>
     {% endfor %}
   </ul>
 </div>

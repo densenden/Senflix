@@ -1,10 +1,10 @@
 {# Large 3D interactive category badge with dimmed background image and link #}
-<a href="/categories#{{ category_obj.slug or category_obj.id }}" class="category-badge-3d group relative flex items-center justify-center px-10 py-7 rounded-3xl font-extrabold text-2xl text-white shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden"
+<a href="/category/{{ category_obj.slug or category_obj.id }}" class="category-badge-3d group relative flex items-center justify-center px-10 py-7 rounded-3xl font-extrabold text-2xl text-white shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden"
      style="perspective:800px; will-change:transform; min-width:320px; min-height:110px; max-width:480px; max-height:180px; text-decoration: none;">
-  {% if category_obj.bg_img %}
-    <img src="{{ url_for('static', filename='categories/' ~ category_obj.bg_img) }}" alt="" class="absolute inset-0 w-full h-full object-cover opacity-60 z-0 pointer-events-none rounded-3xl">
-    <div class="absolute inset-0 bg-gradient-to-br from-black/70 via-black/40 to-transparent z-0 rounded-3xl"></div>
-  {% endif %}
+     {% if category_obj.img_url %}
+     <img src="/{{ category_obj.img_url }}" alt="{{ category_obj.name }} background" class="absolute inset-0 w-full h-full object-cover object-center opacity-70">
+     <div class="absolute inset-0 bg-gradient-to-br from-black/70 via-black/40 to-transparent z-0 rounded-3xl"></div>
+   {% endif %}
   <span class="relative z-10 drop-shadow-lg">{{ category_obj.name }}</span>
   <script>
   document.addEventListener('DOMContentLoaded', function() {
