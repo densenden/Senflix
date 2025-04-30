@@ -11,7 +11,12 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
 
-print(f"[DB DEBUG] SQLALCHEMY_DATABASE_URI: {app.config.get('SQLALCHEMY_DATABASE_URI')}")
+# Setze den Datenbankpfad
+db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data/senflix.sqlite'))
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+print(f"[DB DEBUG] SQLALCHEMY_DATABASE_URI: {app.config['SQLALCHEMY_DATABASE_URI']}")
 
 data_manager = SQLiteDataManager()
 data_manager.init_app(app)
@@ -77,27 +82,102 @@ def select_user(user_id):
     return redirect(url_for('movies'))
 
 @app.route('/movies')
-@login_required
 def movies():
-    # Fetch all required movie lists
-    new_releases = data_manager.get_movies_by_category(1)  # Example: category 1 is new releases
-    popular_movies = data_manager.get_popular_movies()
-    friends_favorites = data_manager.get_friends_favorites(current_user.id)
-    top_rated = data_manager.get_top_rated_movies()
-    recent_commented = data_manager.get_recent_commented_movies()
-    categories = data_manager.get_all_categories_with_movies()
-    platforms = data_manager.get_all_platforms()
-    return render_template(
-        'movies.html',
-        new_releases=new_releases,
-        popular_movies=popular_movies,
-        friends_favorites=friends_favorites,
-        top_rated=top_rated,
-        recent_commented=recent_commented,
-        categories=categories,
-        platforms=platforms,
-        current_user=current_user
-    )
+    # Globalen data_manager verwenden statt einen neuen zu erstellen
+    
+    # Get all required movie lists
+    try:
+        new_releases = data_manager.get_new_releases(limit=10)  # Get 10 most recent movies
+        popular_movies = data_manager.get_popular_movies(limit=10)
+        top_rated = data_manager.get_top_rated_movies(limit=10)
+        recent_comments = data_manager.get_recent_commented_movies(limit=5)
+        all_movies = data_manager.get_all_movies()  # Alle Filme für Kategoriedarstellungen
+        
+        # Debug prints with detailed movie structure
+        if new_releases:
+            print("[DEBUG] Sample New Release Movie Structure:", new_releases[0])
+        if popular_movies:
+            print("[DEBUG] Sample Popular Movie Structure:", popular_movies[0])
+        if top_rated:
+            print("[DEBUG] Sample Top Rated Movie Structure:", top_rated[0])
+        if recent_comments:
+            print("[DEBUG] Sample Recent Comment Movie Structure:", recent_comments[0])
+        
+        # Get friends' favorites if user is logged in
+        friends_favorites = []
+        if current_user.is_authenticated:
+            friends_favorites = data_manager.get_friends_favorites(current_user.id, limit=10)
+            if friends_favorites:
+                print("[DEBUG] Sample Friends Favorite Structure:", friends_favorites[0])
+        
+        categories = data_manager.get_all_categories()
+        platforms = data_manager.get_all_platforms()
+        
+        if categories:
+            print("[DEBUG] Sample Category Structure:", categories[0])
+        if platforms:
+            print("[DEBUG] Sample Platform Structure:", platforms[0])
+    except Exception as e:
+        print(f"[ERROR] Fehler beim Laden der Filmlisten: {str(e)}")
+        new_releases = []
+        popular_movies = []
+        top_rated = []
+        recent_comments = []
+        friends_favorites = []
+        all_movies = []
+        categories = []
+        platforms = []
+    
+    # Stelle sicher, dass alle Movie-Objekte eine id haben
+    def ensure_movie_id(movie):
+        if isinstance(movie, dict) and 'id' not in movie:
+            movie['id'] = movie.get('movie_id', None)
+        return movie
+    
+    new_releases = [ensure_movie_id(m) for m in new_releases]
+    popular_movies = [ensure_movie_id(m) for m in popular_movies]
+    top_rated = [ensure_movie_id(m) for m in top_rated]
+    recent_comments = [ensure_movie_id(m) for m in recent_comments]
+    friends_favorites = [ensure_movie_id(m) for m in friends_favorites]
+    all_movies = [ensure_movie_id(m) for m in all_movies]
+    
+    # --- DETAILED DEBUGGING --- 
+    print("\n--- Detailed Movie Data Check ---")
+    def print_movie_debug(label, movie_list):
+        print(f"\n{label} (Count: {len(movie_list)}):")
+        if movie_list:
+            # Print first movie structure
+            sample_movie = movie_list[0]
+            print(f"  Sample Movie (ID: {sample_movie.get('id')}, Name: {sample_movie.get('name')}):")
+            if isinstance(sample_movie, dict):
+                omdb_data = sample_movie.get('omdb_data')
+                if omdb_data:
+                    print(f"    omdb_data found. Keys: {list(omdb_data.keys())}")
+                    print(f"    poster_img: {omdb_data.get('poster_img', 'MISSING')}")
+                else:
+                    print(f"    omdb_data: None or MISSING")
+            else:
+                print(f"    Sample is not a dict: {type(sample_movie)}")
+        else:
+            print("  List is empty.")
+            
+    print_movie_debug("New Releases", new_releases)
+    print_movie_debug("Popular Movies", popular_movies)
+    print_movie_debug("Top Rated", top_rated)
+    print_movie_debug("Recent Comments", recent_comments)
+    # print_movie_debug("All Movies", all_movies) # Might be too long
+    print("--- End Detailed Movie Data Check ---\n")
+    # --- END DEBUGGING ---
+
+    return render_template('movies.html',
+                         movies=all_movies,
+                         new_releases=new_releases,
+                         popular_movies=popular_movies,
+                         friends_favorites=friends_favorites,
+                         top_rated=top_rated,
+                         recent_comments=recent_comments,
+                         categories=categories,
+                         platforms=platforms)
 
 @app.route('/movie/<int:movie_id>')
 @login_required
@@ -252,4 +332,4 @@ def category_detail(category_id):
     return render_template('category_detail.html', category=category, current_user=current_user)
 
 if __name__=='__main__':
-    app.run(debug=True, port=5001)
+    app.run(debug=True, port=5002)

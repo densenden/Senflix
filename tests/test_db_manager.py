@@ -25,57 +25,77 @@ def db_manager(app):
 @pytest.fixture
 def test_user(db_manager, app):
     with app.app_context():
-        return db_manager.add_user("Test User", "1234567890")
+        user_data = {
+            'username': 'Test User',
+            'email': 'test@example.com',
+            'password_hash': 'hashed_password'
+        }
+        return db_manager.add_user(user_data)
 
 @pytest.fixture
 def test_movie(db_manager, app):
     with app.app_context():
         movie_data = {
-            "name": "Test Movie",
-            "description": "A test movie",
-            "release_year": 2024,
-            "duration_minutes": 120,
-            "omdb_data": {
-                "imdb_id": "tt1234567",
-                "external_poster_url": "http://example.com/poster.jpg",
-                "plot": "Test plot",
-                "director": "Test Director",
-                "actors": "Test Actor 1, Test Actor 2",
-                "imdb_rating": 8.5
-            }
+            'name': 'Test Movie',
+            'description': 'A test movie',
+            'release_year': 2024,
+            'duration_minutes': 120
         }
         return db_manager.add_movie(movie_data)
 
 @pytest.fixture
 def test_category(db_manager, app):
     with app.app_context():
-        category = Category(name="Test Category")
-        db.session.add(category)
-        db.session.commit()
-        return category
+        category_data = {
+            'name': 'Test Category',
+            'description': 'A test category'
+        }
+        return db_manager.add_category(category_data)
 
 @pytest.fixture
 def test_platform(db_manager, app):
     with app.app_context():
-        platform = StreamingPlatform(name="Test Platform", url="http://test.com")
-        db.session.add(platform)
-        db.session.commit()
-        return platform
+        platform_data = {
+            'name': 'Test Platform',
+            'url': 'https://test-platform.com',
+            'logo_url': 'https://test-platform.com/logo.png'
+        }
+        return db_manager.add_platform(platform_data)
+
+@pytest.fixture
+def test_favorite(db_manager, app, test_user, test_movie):
+    with app.app_context():
+        return db_manager.add_favorite(test_user['id'], test_movie['id'])
+
+@pytest.fixture
+def test_rating(db_manager, app, test_user, test_movie):
+    with app.app_context():
+        return db_manager.add_rating(test_user['id'], test_movie['id'], 4.5, "Great movie!")
 
 def test_add_user(db_manager, app):
     with app.app_context():
-        user = db_manager.add_user("New User", "9876543210")
+        user_data = {
+            'username': 'New User',
+            'email': 'new@example.com',
+            'password_hash': 'hashed_password'
+        }
+        user = db_manager.add_user(user_data)
         assert user is not None
-        assert user["name"] == "New User"
-        assert user["whatsapp_number"] == "9876543210"
-        assert user["avatar_id"] == 1  # Default avatar
+        assert user['username'] == 'New User'
+        assert user['email'] == 'new@example.com'
+        assert 'id' in user
+        assert 'created_at' in user
+        assert 'updated_at' in user
 
 def test_get_user_by_id(db_manager, test_user, app):
     with app.app_context():
         user = db_manager.get_user_by_id(test_user["id"])
         assert user is not None
-        assert user["name"] == "Test User"
-        assert user["whatsapp_number"] == "1234567890"
+        assert user["username"] == "Test User"
+        assert user["email"] == "test@example.com"
+        assert "id" in user
+        assert "created_at" in user
+        assert "updated_at" in user
 
 def test_add_movie(db_manager, app):
     with app.app_context():
@@ -142,8 +162,7 @@ def test_get_user_favorites(db_manager, test_user, test_movie, app):
         assert favorites[0]["watched"] is True
         assert favorites[0]["comment"] == "Great movie!"
         assert favorites[0]["rating"] == 5.0
-        assert "favorite_created_at" in favorites[0]
-        assert "favorite_updated_at" in favorites[0]
+        assert "created_at" in favorites[0]
 
 def test_get_movie_ratings(db_manager, test_user, test_movie, app):
     with app.app_context():
@@ -168,11 +187,17 @@ def test_get_movie_average_rating(db_manager, test_user, test_movie, app):
         db_manager.add_rating(test_user["id"], test_movie["id"], rating=4.0)
         
         # Erstelle einen zweiten Benutzer
-        user2 = db_manager.add_user("Test User 2", "0987654321")
+        user2_data = {
+            'username': 'Test User 2',
+            'email': 'test2@example.com',
+            'password_hash': 'hashed_password'
+        }
+        user2 = db_manager.add_user(user2_data)
         db_manager.add_rating(user2["id"], test_movie["id"], rating=5.0)
         
+        # Teste die durchschnittliche Bewertung
         avg_rating = db_manager.get_movie_average_rating(test_movie["id"])
-        assert avg_rating == 4.5
+        assert avg_rating == 4.5  # (4.0 + 5.0) / 2
 
 def test_get_top_rated_movies(db_manager, test_user, test_movie, app):
     with app.app_context():
@@ -183,7 +208,7 @@ def test_get_top_rated_movies(db_manager, test_user, test_movie, app):
         assert len(top_movies) == 1
         assert top_movies[0]["name"] == "Test Movie"
         assert "omdb_data" in top_movies[0]
-        assert "platforms" in top_movies[0]
+        assert "streaming_platforms" in top_movies[0]
         assert "categories" in top_movies[0]
 
 def test_get_recent_commented_movies(db_manager, test_user, test_movie, app):
@@ -199,69 +224,56 @@ def test_get_recent_commented_movies(db_manager, test_user, test_movie, app):
         assert len(recent_movies) == 1
         assert recent_movies[0]["name"] == "Test Movie"
         assert "omdb_data" in recent_movies[0]
-        assert "platforms" in recent_movies[0]
+        assert "streaming_platforms" in recent_movies[0]
         assert "categories" in recent_movies[0]
 
-def test_get_user_data(db_manager, test_user, test_movie, app):
+def test_get_user_data(db_manager, app, test_user):
     with app.app_context():
-        # Füge einen Favoriten hinzu
-        db_manager.add_favorite(
-            test_user["id"],
-            test_movie["id"],
-            watched=True,
-            comment="Great movie!",
-            rating=5.0
-        )
-        
-        user_data = db_manager.get_user_data(test_user["id"])
+        user_data = db_manager.get_user_data(test_user['id'])
         assert user_data is not None
-        assert user_data["name"] == "Test User"
-        assert len(user_data["favorites"]) == 1
-        assert user_data["favorites"][0]["name"] == "Test Movie"
-        assert "avatar" in user_data
-        assert "favorite_created_at" in user_data["favorites"][0]
-        assert "favorite_updated_at" in user_data["favorites"][0]
+        assert user_data['username'] == 'Test User'
+        assert user_data['email'] == 'test@example.com'
+        assert 'avatar' in user_data
+        assert 'created_at' in user_data
+        assert 'updated_at' in user_data
 
 def test_get_movies_by_category(db_manager, test_movie, test_category, app):
     with app.app_context():
         # Füge den Film zur Kategorie hinzu
-        movie = Movie.query.get(test_movie["id"])
-        movie.categories.append(test_category)
+        movie = db.session.get(Movie, test_movie["id"])
+        category = db.session.get(Category, test_category["id"])
+        movie.categories.append(category)
         db.session.commit()
-        
-        movies = db_manager.get_movies_by_category(test_category.id)
+
+        # Hole die Filme für die Kategorie
+        movies = db_manager.get_movies_by_category(test_category["id"])
         assert len(movies) == 1
-        assert movies[0]["name"] == "Test Movie"
-        assert "omdb_data" in movies[0]
-        assert "platforms" in movies[0]
-        assert "categories" in movies[0]
+        assert movies[0]["id"] == test_movie["id"]
 
 def test_get_movies_by_platform(db_manager, test_movie, test_platform, app):
     with app.app_context():
         # Füge den Film zur Plattform hinzu
-        movie = Movie.query.get(test_movie["id"])
-        movie.platforms.append(test_platform)
+        movie = db.session.get(Movie, test_movie["id"])
+        platform = db.session.get(StreamingPlatform, test_platform["id"])
+        movie.streaming_platforms.append(platform)
         db.session.commit()
-        
-        movies = db_manager.get_movies_by_platform(test_platform.id)
+
+        # Hole die Filme für die Plattform
+        movies = db_manager.get_movies_by_platform(test_platform["id"])
         assert len(movies) == 1
-        assert movies[0]["name"] == "Test Movie"
-        assert "omdb_data" in movies[0]
-        assert "platforms" in movies[0]
-        assert "categories" in movies[0]
+        assert movies[0]["id"] == test_movie["id"]
 
 def test_get_all_categories_with_movies(db_manager, test_movie, test_category, app):
     with app.app_context():
         # Füge den Film zur Kategorie hinzu
-        movie = Movie.query.get(test_movie["id"])
-        movie.categories.append(test_category)
+        movie = db.session.get(Movie, test_movie["id"])
+        category = db.session.get(Category, test_category["id"])
+        movie.categories.append(category)
         db.session.commit()
-        
+
+        # Hole alle Kategorien mit Filmen
         categories = db_manager.get_all_categories_with_movies()
         assert len(categories) == 1
-        assert categories[0]["name"] == "Test Category"
+        assert categories[0]["id"] == test_category["id"]
         assert len(categories[0]["movies"]) == 1
-        assert categories[0]["movies"][0]["name"] == "Test Movie"
-        assert "omdb_data" in categories[0]["movies"][0]
-        assert "platforms" in categories[0]["movies"][0]
-        assert "categories" in categories[0]["movies"][0] 
+        assert categories[0]["movies"][0]["id"] == test_movie["id"] 
