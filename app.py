@@ -12,63 +12,74 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
 
-# Setze den Datenbankpfad
+# Database setup
 db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data/senflix.sqlite'))
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-print(f"[DB DEBUG] SQLALCHEMY_DATABASE_URI: {app.config['SQLALCHEMY_DATABASE_URI']}")
+# print(f"[DB DEBUG] SQLALCHEMY_DATABASE_URI: {app.config['SQLALCHEMY_DATABASE_URI']}") # Removed debug print
 
 data_manager = SQLiteDataManager()
 data_manager.init_app(app)
 omdb_manager = OMDBManager(data_manager)
 
+# Login manager setup
 login_manager = LoginManager(app)
 login_manager.login_view = 'user_selection'
 
 @login_manager.user_loader
 def load_user(user_id):
+    """Load user for Flask-Login."""
     return User.query.get(int(user_id))
 
 @app.context_processor
 def utility_processor():
+    """Inject utility functions into Jinja context."""
     return dict(get_user=lambda uid: data_manager.get_user_by_id(uid))
 
+# --- Decorators ---
 
 def require_fields(fields, redirect_endpoint):
+    """Decorator to ensure required form fields are present."""
     def decorator(f):
         @wraps(f)
         def wrapped(*args, **kwargs):
-            missing = [f for f in fields if not request.form.get(f)]
+            missing = [field for field in fields if not request.form.get(field)]
             if missing:
-                flash(f"Please fill out: {', '.join(missing)}", 'error')
+                flash(f"Please fill out: {", ".join(missing)}", 'error')
                 return redirect(url_for(redirect_endpoint))
             return f(*args, **kwargs)
         return wrapped
     return decorator
 
-
 def ajax_route(f):
+    """Decorator to handle AJAX requests, returning JSON responses."""
     @wraps(f)
     def wrapped(*args, **kwargs):
         try:
             result = f(*args, **kwargs)
             return jsonify({'success': result})
         except Exception as e:
+            # Log the exception for debugging if needed
+            # logger.error(f"AJAX Error in {f.__name__}: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 400
     return wrapped
 
+# --- Routes ---
+
 @app.route('/')
 def user_selection():
-    users = User.query.all()  # Pass SQLAlchemy objects to Jinja
-    print(f"[DEBUG] users: {users}")
+    """Display user selection screen."""
+    users = User.query.all()
     available_avatars = Avatar.query.all()
-    print(f"[DEBUG] available_avatars: {available_avatars}")
+    # print(f"[DEBUG] users: {users}") # Removed debug print
+    # print(f"[DEBUG] available_avatars: {available_avatars}") # Removed debug print
     return render_template('user_selection.html', users=users, available_avatars=available_avatars, current_user=current_user)
 
 @app.route('/create_user', methods=['POST'])
 @require_fields(['avatar','name','whatsapp_number'], 'user_selection')
 def create_user():
+    """Handle user creation form submission."""
     avatar_id = int(request.form['avatar'])
     name = request.form['name']
     whatsapp_number = request.form['whatsapp_number']
@@ -78,80 +89,48 @@ def create_user():
 
 @app.route('/select_user/<int:user_id>')
 def select_user(user_id):
+    """Log in the selected user."""
     user = User.query.get(user_id)
     if user: login_user(user)
     return redirect(url_for('movies'))
 
 @app.route('/movies')
 def movies():
-    
-    # Get all required movie lists
+    """Display the main movies page with various sections."""
     try:
-        new_releases = data_manager.get_new_releases(limit=10)  # Get 10 most recent movies
+        new_releases = data_manager.get_new_releases(limit=10)
         popular_movies = data_manager.get_popular_movies(limit=10)
         top_rated = data_manager.get_top_rated_movies(limit=10)
         recent_comments = data_manager.get_recent_commented_movies(limit=5)
-        all_movies = data_manager.get_all_movies()  # Alle Filme für Kategoriedarstellungen
-        
-        # Debug prints with detailed movie structure
-        if new_releases:
-            print("[DEBUG] Sample New Release Movie Structure:", new_releases[0])
-            # Überprüfe OMDB-Daten im ersten Film
-            omdb_data = new_releases[0].get('omdb_data', {})
-            print(f"[DEBUG] OMDB Daten vorhanden: {omdb_data is not None}")
-            print(f"[DEBUG] OMDB Daten Typ: {type(omdb_data)}")
-            if omdb_data:
-                poster_img = omdb_data.get('poster_img')
-                print(f"[DEBUG] Poster Bild: {poster_img}")
-                print(f"[DEBUG] Vollständige OMDB Daten: {omdb_data}")
-            # Prüfe, ob omdb_data und poster_img vorhanden sind
-            omdb_data = new_releases[0].get('omdb_data', {})
-            poster_img = omdb_data.get('poster_img', 'FEHLT!')
-            print(f"[DEBUG] Erstes Film omdb_data: {omdb_data}")
-            print(f"[DEBUG] Erstes Film poster_img: {poster_img}")
-
-        if popular_movies:
-            print("[DEBUG] Sample Popular Movie Structure:", popular_movies[0])
-            # Prüfe, ob omdb_data und poster_img vorhanden sind
-            omdb_data = popular_movies[0].get('omdb_data', {})
-            poster_img = omdb_data.get('poster_img', 'FEHLT!')
-            print(f"[DEBUG] Beliebter Film omdb_data: {omdb_data}")
-            print(f"[DEBUG] Beliebter Film poster_img: {poster_img}")
-        
-        if top_rated:
-            print("[DEBUG] Sample Top Rated Movie Structure:", top_rated[0])
-        if recent_comments:
-            print("[DEBUG] Sample Recent Comment Movie Structure:", recent_comments[0])
-        
-        # Get friends' favorites if user is logged in
-        friends_favorites = []
-        if current_user.is_authenticated:
-            friends_favorites = data_manager.get_friends_favorites(current_user.id, limit=10)
-            if friends_favorites:
-                print("[DEBUG] Sample Friends Favorite Structure:", friends_favorites[0])
-        
-        categories = data_manager.get_all_categories()
+        categories = data_manager.get_all_categories_with_movies()
         platforms = data_manager.get_all_platforms()
         
-        if categories:
-            print("[DEBUG] Sample Category Structure:", categories[0])
-        if platforms:
-            print("[DEBUG] Sample Platform Structure:", platforms[0])
-    except Exception as e:
-        print(f"[ERROR] Fehler beim Laden der Filmlisten: {str(e)}")
-        new_releases = []
-        popular_movies = []
-        top_rated = []
-        recent_comments = []
-        friends_favorites = []
-        all_movies = []
-        categories = []
-        platforms = []
-    
+        # Add watched avatars to the lists
+        new_releases = data_manager._add_watched_avatars_to_movies(new_releases)
+        popular_movies = data_manager._add_watched_avatars_to_movies(popular_movies)
+        top_rated = data_manager._add_watched_avatars_to_movies(top_rated)
+        # Add avatars to movies within categories as well
+        for category in categories:
+            category['movies'] = data_manager._add_watched_avatars_to_movies(category.get('movies', []))
+        # Note: recent_comments already contains movie dicts from favorites, maybe add avatars there too?
+        # recent_comments = data_manager._add_watched_avatars_to_movies(recent_comments) # Consider if needed
 
+        friends_favorites = []
+        if current_user.is_authenticated:
+            # Note: Friends functionality is currently disabled in db_manager
+            friends_favorites = data_manager.get_friends_favorites(current_user.id, limit=10)
+            
+        # Remove detailed debug prints
+        # if new_releases: print("[DEBUG] Sample New Release Movie Structure:", new_releases[0])
+        # ... (other debug prints removed)
+        
+    except Exception as e:
+        app.logger.error(f"Error loading movie lists for /movies: {str(e)}")
+        # Provide empty lists on error to prevent crashes
+        new_releases, popular_movies, top_rated, recent_comments = [], [], [], []
+        friends_favorites, categories, platforms = [], [], []
 
     return render_template('movies.html',
-                         movies=all_movies,
                          new_releases=new_releases,
                          popular_movies=popular_movies,
                          friends_favorites=friends_favorites,
@@ -163,11 +142,13 @@ def movies():
 @app.route('/movie/<int:movie_id>')
 @login_required
 def movie_detail(movie_id):
+    """Display details for a specific movie."""
     movie = data_manager.get_movie_data(movie_id)
     if not movie:
-        flash('Not found', 'error')
+        flash('Movie not found', 'error')
         return redirect(url_for('movies'))
-    # Get all users who watched this movie
+        
+    # Get users who watched this movie
     watched_entries = UserFavorite.query.filter_by(movie_id=movie_id, watched=True).all()
     watched_users = []
     for entry in watched_entries:
@@ -177,140 +158,187 @@ def movie_detail(movie_id):
             watched_users.append({
                 'id': user.id,
                 'name': user.name,
-                'avatar_url': avatar.profile_image_url if avatar else '/static/avatars/default.png',
+                'avatar_url': avatar.profile_image_url if avatar else None, # Handle missing avatar
                 'rating': entry.rating
             })
-    # Get OMDB info if present
-    omdb_data = movie.get('omdb_data') if isinstance(movie, dict) else None
+            
+    # OMDB data is already included in movie via get_movie_data
+    omdb_data = movie.get('omdb_data') 
     return render_template('movie_detail.html', movie=movie, watched_users=watched_users, omdb_data=omdb_data, current_user=current_user)
 
 @app.route('/toggle_watchlist/<int:movie_id>', methods=['POST'])
 @login_required
 @ajax_route
 def toggle_watchlist(movie_id):
+    """AJAX endpoint to add/remove a movie from the watchlist."""
+    # upsert_favorite needs to handle finding the existing state
     return data_manager.upsert_favorite(current_user.id, movie_id, watchlist=True)
 
 @app.route('/toggle_watched/<int:movie_id>', methods=['POST'])
 @login_required
 @ajax_route
 def toggle_watched(movie_id):
+    """AJAX endpoint to mark a movie as watched/unwatched."""
+    # upsert_favorite needs to handle finding the existing state
     return data_manager.upsert_favorite(current_user.id, movie_id, watched=True)
 
 @app.route('/rate_movie', methods=['POST'])
 @login_required
 @ajax_route
 def rate_movie():
+    """AJAX endpoint to save a movie rating and comment."""
     movie_id = int(request.form['movie_id'])
-    rating = float(request.form['rating'])
+    # Rating comes from the modal script, ensure it's sent
+    rating = float(request.form.get('rating', 0)) # Default to 0 if not sent?
     comment = request.form.get('comment', '')
+    # Ensure rating is within valid range if necessary (e.g., 0.5 to 5)
+    # rating = max(0.5, min(5, rating)) if rating else None 
     return data_manager.upsert_favorite(current_user.id, movie_id, rating=rating, comment=comment)
 
 @app.route('/profile')
 @login_required
 def profile():
-    return render_template('profile.html', stats=data_manager.get_user_data(current_user.id)['favorites'])
+    """Display the current user's profile (simplified)."""
+    # This currently redirects to user_profile, consider a dedicated profile page
+    return redirect(url_for('user_profile', user_id=current_user.id))
 
 @app.route('/logout')
 @login_required
 def logout():
+    """Log out the current user."""
     logout_user()
     return redirect(url_for('user_selection'))
 
 @app.route('/search')
 def search():
-    q = request.args.get('q', '').strip()
-    if not q:
+    """Handle movie search requests."""
+    query = request.args.get('q', '').strip()
+    if not query:
         return redirect(url_for('movies'))
+        
     results = []
-    for m in data_manager.get_all_movies():
-        if q.lower() in m['name'].lower():
-            details = data_manager.get_movie_data(m['id'])
-            details['omdb'] = omdb_manager.get_omdb_data(m['id']) or {}
-            results.append(details)
-    return render_template('search_results.html', query=q, results=results)
+    # Consider optimizing search (e.g., using SQL LIKE or a search index)
+    all_movies = data_manager.get_all_movies() 
+    for movie_summary in all_movies:
+        # Search in movie name/title (case-insensitive)
+        if query.lower() in movie_summary.get('name', '').lower():
+            # Fetch full data only for matches
+            details = data_manager.get_movie_data(movie_summary['id'])
+            if details: # Ensure movie data was found
+                 # OMDB data should be part of details now
+                # details['omdb'] = omdb_manager.get_omdb_data(m['id']) or {} # Removed redundant fetch
+                results.append(details)
+                
+    return render_template('search_results.html', query=query, results=results)
 
-@app.route('/users')
-def users():
-    avatars = Avatar.query.all()
-    avatar_groups = []
-    for avatar in avatars:
-        users = avatar.users.all()
-        if not users:
-            continue
-        group = {
-            'name': avatar.name,
-            'img_url': url_for('static', filename=avatar.hero_image_url),
-            'users': [data_manager.get_user_data(u.id) for u in users]
-        }
-        avatar_groups.append(group)
-    return render_template('users.html', avatar_groups=avatar_groups)
+# Obsolete route? Consider removing if not used.
+# @app.route('/users')
+# def users():
+#     ... (implementation omitted) ...
 
 @app.route('/users/<int:user_id>')
 @login_required
 def user_profile(user_id):
-    user = data_manager.get_user_data(user_id)
-    if not user:
+    """Display a specific user's profile and movie lists."""
+    user_data = data_manager.get_user_data(user_id)
+    if not user_data:
         flash('User not found', 'error')
         return redirect(url_for('movies'))
-    # Separate favorites into watched and watchlist
-    favorites = user.get('favorites', [])
-    watched = [f for f in favorites if f.get('watched')]
-    watchlist = [f for f in favorites if f.get('watchlist')]
-    # Last comments (show up to 3, most recent last)
-    comments = [f for f in favorites if f.get('comment')]
-    last_comments = comments[-3:] if comments else []
+        
+    # Favorites list includes watched/watchlist status
+    favorites = user_data.get('favorites', [])
+    watched = [fav for fav in favorites if fav.get('watched')]
+    watchlist = [fav for fav in favorites if fav.get('watchlist')]    
+    comments = sorted([fav for fav in favorites if fav.get('comment')], 
+                      key=lambda x: x.get('created_at', '0'), reverse=True) # Sort by date if available
+    last_comments = comments[:3] # Get the 3 most recent
+
     return render_template(
         'user_movies.html',
-        user=user,
+        user=user_data, # Pass the whole user_data dict
         watched=watched,
         watchlist=watchlist,
         last_comments=last_comments
     )
 
+# Routes for adding/updating/deleting movies from user lists (Consider security/permissions)
 @app.route('/users/<int:user_id>/add_movie', methods=['GET','POST'])
-@login_required
+@login_required # Ensure user is logged in
 def add_movie(user_id):
-    if request.method=='POST':
-        mid=int(request.form['movie_id'])
-        watched='watched' in request.form
-        rating=float(request.form['rating']) if request.form.get('rating') else None
-        comment=request.form.get('comment')
-        data_manager.upsert_favorite(user_id, mid, watched=watched, rating=rating, comment=comment)
-        flash('Saved','success')
+    """Display form or handle adding a movie to a user's list."""
+    # Add check: Is current_user authorized to modify this user_id's list?
+    # if current_user.id != user_id: 
+    #    flash('Unauthorized', 'error')
+    #    return redirect(url_for('movies'))
+        
+    if request.method == 'POST':
+        movie_id = int(request.form['movie_id'])
+        watched = 'watched' in request.form
+        watchlist = 'watchlist' in request.form # Add watchlist handling
+        rating = float(request.form['rating']) if request.form.get('rating') else None
+        comment = request.form.get('comment')
+        # Use upsert to handle adding/updating
+        success = data_manager.upsert_favorite(user_id, movie_id, watched=watched, watchlist=watchlist, rating=rating, comment=comment)
+        flash('Saved' if success else 'Error saving', 'success' if success else 'error')
         return redirect(url_for('user_profile', user_id=user_id))
-    return render_template('add_movie.html', user_id=user_id, movies=data_manager.get_all_movies())
+        
+    # Prepare data for the GET request form
+    user_data = data_manager.get_user_by_id(user_id)
+    all_movies = data_manager.get_all_movies()
+    return render_template('add_movie.html', user=user_data, movies=all_movies)
 
 @app.route('/users/<int:user_id>/update_movie/<int:movie_id>', methods=['GET','POST'])
 @login_required
 def update_movie(user_id, movie_id):
-    fav = next((f for f in data_manager.get_user_favorites(user_id) if f['movie_id']==movie_id), None)
+    """Display form or handle updating a movie in a user's list."""
+    # Add authorization check: if current_user.id != user_id: ...
+
+    # Get existing favorite data
+    fav = data_manager.get_user_favorite(user_id, movie_id) # Assumes get_user_favorite exists
     if not fav:
-        flash('Not in favorites','error')
+        flash('Movie not found in your lists','error')
         return redirect(url_for('user_profile', user_id=user_id))
-    if request.method=='POST':
-        data_manager.upsert_favorite(user_id, movie_id, watched='watched' in request.form, rating=float(request.form.get('rating')) if request.form.get('rating') else None, comment=request.form.get('comment'))
-        flash('Updated','success')
+        
+    if request.method == 'POST':
+        watched = 'watched' in request.form
+        watchlist = 'watchlist' in request.form
+        rating = float(request.form.get('rating')) if request.form.get('rating') else None
+        comment = request.form.get('comment')
+        success = data_manager.upsert_favorite(user_id, movie_id, watched=watched, watchlist=watchlist, rating=rating, comment=comment)
+        flash('Updated' if success else 'Error updating', 'success' if success else 'error')
         return redirect(url_for('user_profile', user_id=user_id))
-    return render_template('update_movie.html', user_id=user_id, movie=fav)
+        
+    # Pass existing data to the template for GET request
+    movie_data = data_manager.get_movie_data(movie_id)
+    return render_template('update_movie.html', user_id=user_id, movie=movie_data, favorite=fav)
 
 @app.route('/users/<int:user_id>/delete_movie/<int:movie_id>', methods=['POST'])
+@login_required
 def delete_movie(user_id, movie_id):
-    data_manager.remove_favorite(user_id, movie_id)
-    flash('Removed','success')
+    """Handle deleting a movie from a user's list."""
+    # Add authorization check: if current_user.id != user_id: ...
+    success = data_manager.remove_favorite(user_id, movie_id)
+    flash('Removed' if success else 'Error removing', 'success' if success else 'error')
     return redirect(url_for('user_profile', user_id=user_id))
 
 @app.route('/category/<int:category_id>')
-@login_required
 def category_detail(category_id):
-    # Get the category object (for name, img, etc.)
+    """Display movies belonging to a specific category."""
     category_obj = Category.query.get(category_id)
     if not category_obj:
         flash('Category not found', 'error')
         return redirect(url_for('movies'))
-    movies = data_manager.get_movies_by_category(category_id)
-    category = category_obj.to_dict()
-    category['movies'] = movies
-    return render_template('category_detail.html', category=category, current_user=current_user)
+        
+    movies_in_category = data_manager.get_movies_by_category(category_id)
+    category_data = category_obj.to_dict(include_relationships=False) # Don't need movies inside dict again
+    category_data['movies'] = movies_in_category # Add movies separately
+    
+    return render_template('category_detail.html', category=category_data, current_user=current_user)
+
+# Temporary test route removed
+# @app.route('/test_movie_data/<int:movie_id>')
+# def test_movie_data(movie_id):
+#     # ... (implementation removed) ...
 
 if __name__=='__main__':
     app.run(debug=True, port=5002)

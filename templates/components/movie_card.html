@@ -1,245 +1,179 @@
 {% macro movie_card(movie) %}
+{# --- Variable Setup --- #}
 {% set movie_id = movie.get('id', movie.get('movie_id')) %}
 {% set movie_name = movie.get('name', 'No title') %}
 {% set movie_year = movie.get('year', 'N/A') %}
-{% set imdb_rating = movie.get('omdb_data', {}).get('imdb_rating') %}
-{# Pass watched/watchlist status if available, default to false #}
-{% set is_watched = movie.get('watched', False) %}
-{% set is_on_watchlist = movie.get('watchlist', False) %}
-
-{# Direkter Zugriff auf die Bild-URL über die neue Route #}
 {% set omdb_data = movie.get('omdb_data', {}) %}
+{% set imdb_rating = omdb_data.get('imdb_rating') %}
 {% set poster_img = omdb_data.get('poster_img') %}
-{% set poster_src = url_for('static', filename='movies/' ~ poster_img) if poster_img else None %}
+{# Watched/Watchlist status - Check current_user's favorites for this movie #}
+{# This requires passing current_user's full favorites list or checking status in backend #}
+{# Simplified check - assuming movie dict might contain user-specific status #}
+{% set is_watched = movie.get('user_watched', False) %}
+{% set is_on_watchlist = movie.get('user_watchlist', False) %}
+{% set watched_by_avatars = movie.get('watched_by_avatars', []) %}
 
-<div class="movie-card-3d-wrapper group aspect-[2/3] rounded-lg overflow-hidden" 
+{# --- Card Structure --- #}
+<div class="movie-card-3d-wrapper group aspect-[2/3] rounded-lg overflow-hidden bg-gray-800"
      style="perspective: 1000px;">
-    <a href="{{ url_for('movie_detail', movie_id=movie_id) }}" class="block w-full h-full">
-        <div class="movie-card-3d relative w-full h-full shadow-lg transition-transform duration-150 ease-out bg-gray-900 rounded-lg"
-             style="transform-style: preserve-3d;" 
-             data-movie-name="{{ movie_name }}" 
-             data-poster-img="{{ poster_img }}" 
-             data-poster-src="{{ poster_src }}">
+    {# Link the whole card #}
+    <a href="{{ url_for('movie_detail', movie_id=movie_id) }}" 
+       class="block w-full h-full relative overflow-hidden rounded-lg">
+        
+        {# Background Image applied via CSS #}
+        <div class="movie-card-3d absolute inset-0 w-full h-full shadow-lg transition-transform duration-150 ease-out bg-cover bg-center rounded-lg"
+             style="transform-style: preserve-3d;{% if poster_img %} background-image: url('{{ url_for('static', filename='movies/' ~ poster_img) }}');{% endif %}\"
+             data-movie-id="{{ movie_id }}"
+             data-movie-name="{{ movie_name }}"> 
             
-            {# Poster Image (Background) #}
-            {% if poster_src %}
-            <img src="{{ poster_src }}" 
-                 alt="{{ movie_name }}"
-                 class="absolute inset-0 w-full h-full object-cover rounded-lg transition-opacity duration-300">
-            {% else %}
-            <div class="absolute inset-0 w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center rounded-lg">
-                <span class="text-gray-300 text-xs">{{ movie_name[:10] }}{% if movie_name|length > 10 %}...{% endif %}</span>
+            {# Placeholder shown only if no poster_img via background #}
+            {% if not poster_img %}
+            <div class="absolute inset-0 w-full h-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center rounded-lg">
+                <span class="text-center text-gray-300 text-xs px-2">{{ movie_name }}</span>
             </div>
             {% endif %}
 
-            {# Debug-Info - Wird angezeigt, wenn ?debug=1 in der URL ist #}
-            <div class="absolute top-0 left-0 bg-black/80 text-white text-xs p-1 z-50 movie-debug-info">
-                <strong>Movie ID:</strong> {{ movie_id }}<br>
-                <strong>Poster:</strong> {{ poster_img }}<br>
-                <strong>URL:</strong> {{ poster_src }}
-            </div>
-
             {# Hover Overlay Content #}
-            <div class="absolute inset-0 flex flex-col justify-end p-4 rounded-lg
-                        bg-gradient-to-t from-black/95 via-black/70 to-transparent 
-                        opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out"
-                 style="transform: translateZ(50px);"> {# Slightly raise overlay content #}
+            <div class="absolute inset-0 flex flex-col p-3 rounded-lg 
+                        bg-gradient-to-t from-black/95 via-black/60 to-transparent 
+                        opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out"
+                 style="transform: translateZ(1px);"> {# Slight Z translation to ensure overlay is on top #}
                 
-                {# Movie Info #}
-                <div class="mb-auto pt-4"> {# Push icons down #}
-                    <h3 class="text-white font-bold text-lg leading-tight mb-1">{{ movie_name }}</h3>
-                    <div class="flex items-center text-xs text-gray-400">
-                        <span>{{ movie_year }}</span>
-                        {% if imdb_rating %}
-                        <span class="mx-2">|</span>
-                        <span class="flex items-center">
-                            <svg class="w-3 h-3 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                            {{ "%.1f"|format(imdb_rating) }}
-                        </span>
-                        {% endif %}
-                    </div>
-                </div>
+                {# Top part of overlay (can be empty or add genre tags later) #}
+                <div class="flex-grow"><!-- Spacer --></div>
 
-                {# Action Icons #}
-                <div class="flex items-center justify-between space-x-2 mt-3" onclick="event.preventDefault(); event.stopPropagation();">
-                    {# Add dynamic class based on is_on_watchlist #}
-                    <button 
-                        class="action-icon watchlist-btn {{ 'action-icon-active' if is_on_watchlist else '' }}" 
-                        title="{{ 'Remove from Watchlist' if is_on_watchlist else 'Add to Watchlist' }}" 
-                        data-movie-id="{{ movie_id }}"
-                        onclick="toggleWatchlist(this, {{ movie_id }}); return false;">
-                        {# Plus icon for add, checkmark for remove? Or just toggle style #}
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 icon-add" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 icon-remove hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    </button>
-                    {# Add dynamic class based on is_watched #}
-                    <button 
-                        class="action-icon watched-btn {{ 'action-icon-active' if is_watched else '' }}" 
-                        title="{{ 'Mark as Unwatched' if is_watched else 'Mark as Watched' }}" 
-                        data-movie-id="{{ movie_id }}"
-                        onclick="toggleWatched(this, {{ movie_id }}); return false;">
-                        {# TV icon #}
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="6" width="18" height="12" rx="2" ry="2" />
-                            <path d="M5 12h14M12 6v12" />
-                        </svg>
-                    </button>
-                    <button 
-                        class="action-icon rate-btn" 
-                        title="Rate Movie" 
-                        data-movie-id="{{ movie_id }}"
-                        onclick="showRatingModal({{ movie_id }}); return false;">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
-                    </button>
+                {# Bottom part of overlay #}
+                <div>
+                    {# Movie Title, Year, Rating (Aligned Bottom) #}
+                    <div class="mb-2">
+                        <h3 class="text-white font-bold text-base leading-tight mb-0.5 truncate" title="{{ movie_name }}">{{ movie_name }}</h3>
+                        <div class="flex items-center text-xs text-gray-300">
+                            <span>{{ movie_year }}</span>
+                            {# Display IMDb rating if available and valid #}
+                            {% if imdb_rating and imdb_rating != 'N/A' %}
+                            <span class="mx-1.5">|</span>
+                            <span class="flex items-center">
+                                <svg class="w-3 h-3 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                {{ "%.1f"|format(imdb_rating|float) }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {# Watched Avatars & Action Icons Container #}
+                    <div class="flex items-center justify-between mt-1">
+                        {# Watched Avatars #}
+                        <div class="flex items-center flex-shrink min-w-0">
+                            {% for avatar_url in watched_by_avatars %}
+                            <img src="{{ url_for('static', filename=avatar_url) }}" 
+                                 alt="Watched by user" 
+                                 class="w-5 h-5 rounded-full border border-gray-600 object-cover {{ ' -ml-1.5' if not loop.first else '' }}">
+                            {% endfor %}
+                            {# Add a subtle indicator if there are more watchers than shown? #}
+                        </div>
+                        
+                        {# Action Icons (Watchlist, Watched, Rate) #}
+                        {# Stop propagation to prevent card link trigger #}
+                        <div class="flex items-center space-x-1.5 flex-shrink-0" onclick="event.stopPropagation(); event.preventDefault();">
+                            {# Watchlist Toggle Button #}
+                            <button 
+                                class="action-icon watchlist-toggle-btn {{ 'action-icon-active' if is_on_watchlist else '' }}" 
+                                title="{{ 'Remove from Watchlist' if is_on_watchlist else 'Add to Watchlist' }}" 
+                                data-movie-id="{{ movie_id }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 icon-add" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 icon-remove hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            </button>
+                            {# Watched Toggle Button #}
+                            <button 
+                                class="action-icon watched-toggle-btn {{ 'action-icon-active' if is_watched else '' }}" 
+                                title="{{ 'Mark as Unwatched' if is_watched else 'Mark as Watched' }}" 
+                                data-movie-id="{{ movie_id }}">
+                                {# Using an 'eye' icon for watched #}
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 icon-watched" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 icon-unwatched hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                            </button>
+                            {# Rate Button (Opens Modal) #}
+                            <button 
+                                class="action-icon rate-btn" 
+                                title="Rate Movie" 
+                                data-movie-id="{{ movie_id }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </a> {# End link wrapper #}
+    </a> 
 </div>
 
-{# Add CSS and JS directly within the macro scope #}
+{# --- Styles for Movie Card --- #}
+{# Scoped to this component to avoid global conflicts #}
 <style>
 .movie-card-3d-wrapper .action-icon {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 9999px;
-    padding: 0.35rem;
-    color: rgba(255, 255, 255, 0.8);
-    transition: background-color 0.2s, color 0.2s;
-    line-height: 0; /* Prevent extra space */
+    background-color: rgba(31, 41, 55, 0.6); /* gray-800 with opacity */
+    border-radius: 9999px; /* Fully rounded */
+    padding: 0.3rem; /* Slightly smaller padding */
+    color: rgba(209, 213, 219, 0.9); /* gray-300 with opacity */
+    transition: background-color 0.2s, color 0.2s, transform 0.1s;
+    line-height: 0; /* Ensure icon is centered */
+    border: 1px solid rgba(75, 85, 99, 0.5); /* gray-600 border */
 }
 .movie-card-3d-wrapper .action-icon:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(55, 65, 81, 0.8); /* gray-700 with opacity */
     color: white;
+    transform: scale(1.1);
 }
-/* Style for active state */
+/* Active state (e.g., on watchlist or watched) */
 .movie-card-3d-wrapper .action-icon-active {
-    background-color: rgba(239, 68, 68, 0.8); /* Example: Red background */
+    background-color: rgba(220, 38, 38, 0.8); /* Tailwind red-600 with opacity */
     color: white;
+    border-color: rgba(220, 38, 38, 0.9);
 }
 .movie-card-3d-wrapper .action-icon-active:hover {
-    background-color: rgba(239, 68, 68, 1); 
+    background-color: rgba(185, 28, 28, 1); /* Tailwind red-700 */
 }
-/* Toggle visibility of add/remove icons for watchlist */
-.movie-card-3d-wrapper .watchlist-btn .icon-remove {
+
+/* Show/hide icons for watchlist button based on active state */
+.movie-card-3d-wrapper .watchlist-toggle-btn .icon-remove {
     display: none;
 }
-.movie-card-3d-wrapper .watchlist-btn.action-icon-active .icon-add {
+.movie-card-3d-wrapper .watchlist-toggle-btn.action-icon-active .icon-add {
     display: none;
 }
-.movie-card-3d-wrapper .watchlist-btn.action-icon-active .icon-remove {
+.movie-card-3d-wrapper .watchlist-toggle-btn.action-icon-active .icon-remove {
     display: inline-block;
 }
 
-/* Prevent image dragging ghost */
-.movie-card-3d img {
-    pointer-events: none; 
-    user-select: none;
+/* Show/hide icons for watched button based on active state */
+.movie-card-3d-wrapper .watched-toggle-btn .icon-unwatched {
+    display: none;
 }
+.movie-card-3d-wrapper .watched-toggle-btn.action-icon-active .icon-watched {
+    display: none;
+}
+.movie-card-3d-wrapper .watched-toggle-btn.action-icon-active .icon-unwatched {
+    display: inline-block;
+}
+
+/* Prevent image selection/dragging on background */
+.movie-card-3d {
+    -webkit-user-drag: none;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Ensure background covers area even if image is smaller */
+.movie-card-3d {
+    background-color: #1f2937; /* Fallback color (gray-800) */
+}
+
 </style>
 
-<script>
-(function() {
-    // Debug-Modus aktivieren, wenn ?debug=1 in der URL
-    const params = new URLSearchParams(window.location.search);
-    const debugMode = params.get('debug') === '1';
-    if (debugMode) {
-        document.querySelectorAll('.movie-debug-info').forEach(el => {
-            el.style.display = 'block';
-        });
-    }
-    
-    // Ensure this runs only once per card instance if macro is used multiple times
-    const cardWrappers = document.querySelectorAll('.movie-card-3d-wrapper');
-    
-    cardWrappers.forEach(wrapper => {
-        // Check if listeners are already attached
-        if (wrapper.dataset.listenersAttached === 'true') {
-            return; 
-        }
-        wrapper.dataset.listenersAttached = 'true';
+{# --- JavaScript for Movie Card Interactivity (Attached once via movies.html) --- #}
+{# NOTE: The actual JS logic (3D effect, button clicks) should be in movies.html #}
+{# This file now only contains the HTML structure and scoped CSS #}
 
-        const card = wrapper.querySelector('.movie-card-3d');
-        if (!card) return;
-
-        const intensity = 15; // How much tilt
-
-        wrapper.addEventListener('mousemove', (e) => {
-            const rect = wrapper.getBoundingClientRect();
-            const x = e.clientX - rect.left; // Mouse X position relative to element.
-            const y = e.clientY - rect.top;  // Mouse Y position relative to element.
-
-            const halfWidth = rect.width / 2;
-            const halfHeight = rect.height / 2;
-
-            const rotateY = ((x - halfWidth) / halfWidth) * intensity;
-            const rotateX = ((y - halfHeight) / halfHeight) * -intensity; // Invert X rotation
-
-            card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-        });
-
-        wrapper.addEventListener('mouseleave', () => {
-            card.style.transform = 'rotateX(0deg) rotateY(0deg)'; // Reset transform
-        });
-
-        // Spezielles Debug-Logging für das Bild
-        const img = card.querySelector('img');
-        const movieName = card.dataset.movieName;
-        const posterImg = card.dataset.posterImg;
-        console.log(`Film "${movieName}" hat Poster: ${posterImg}`);
-    });
-    
-    // Define toggle functions if they don't exist globally
-    if (typeof window.toggleWatchlist !== 'function') {
-        window.toggleWatchlist = function(buttonElement, movieId) { 
-            console.log('Toggle watchlist for:', movieId);
-            // Optimistic UI update
-            const isActive = buttonElement.classList.toggle('action-icon-active');
-            buttonElement.title = isActive ? 'Remove from Watchlist' : 'Add to Watchlist';
-            // Actual fetch call
-            fetch(`/toggle_watchlist/${movieId}`, { method: 'POST' })
-                .then(response => {
-                    if (!response.ok) {
-                        // Revert UI on error
-                        buttonElement.classList.toggle('action-icon-active'); 
-                         buttonElement.title = !isActive ? 'Remove from Watchlist' : 'Add to Watchlist';
-                        console.error('Failed to toggle watchlist');
-                    }
-                    // Optionally handle success, maybe refresh part of the page if needed
-                })
-                .catch(error => {
-                    // Revert UI on error
-                     buttonElement.classList.toggle('action-icon-active'); 
-                     buttonElement.title = !isActive ? 'Remove from Watchlist' : 'Add to Watchlist';
-                    console.error('Error toggling watchlist:', error);
-                });
-         }
-    }
-    if (typeof window.toggleWatched !== 'function') {
-       window.toggleWatched = function(buttonElement, movieId) { 
-           console.log('Toggle watched for:', movieId);
-            // Optimistic UI update
-           const isActive = buttonElement.classList.toggle('action-icon-active');
-           buttonElement.title = isActive ? 'Mark as Unwatched' : 'Mark as Watched';
-            // Actual fetch call
-           fetch(`/toggle_watched/${movieId}`, { method: 'POST' })
-                .then(response => {
-                    if (!response.ok) {
-                        // Revert UI on error
-                        buttonElement.classList.toggle('action-icon-active');
-                        buttonElement.title = !isActive ? 'Mark as Unwatched' : 'Mark as Watched';
-                        console.error('Failed to toggle watched');
-                    }
-                })
-                .catch(error => {
-                    // Revert UI on error
-                    buttonElement.classList.toggle('action-icon-active');
-                    buttonElement.title = !isActive ? 'Mark as Unwatched' : 'Mark as Watched';
-                    console.error('Error toggling watched:', error);
-                });
-        }
-    }
-     // showRatingModal should exist from movies.html script
-    
-})();
-</script>
 {% endmacro %}

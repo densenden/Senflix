@@ -258,14 +258,18 @@ class StreamingPlatform(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    # Entferne auch URL und Logo URL, da sie in der DB fehlen
+    # url = db.Column(db.String(255)) # Optional URL for the platform
+    # logo_url = db.Column(db.String(255)) # Optional Logo URL
     
     # Relationships
     movies = db.relationship('Movie', secondary=movie_platforms,
                            back_populates='streaming_platforms', overlaps="streaming_platforms")
-    awards = db.Column(db.String(255))
-    poster_img = db.Column(db.String(255))
-    imdb_rating = db.Column(db.Float)
-    rotten_tomatoes = db.Column(db.String(10))
+    # Entferne fehlerhafte Spalten
+    # awards = db.Column(db.String(255))
+    # poster_img = db.Column(db.String(255))
+    # imdb_rating = db.Column(db.Float)
+    # rotten_tomatoes = db.Column(db.String(10))
 
     @validates('name')
     def validate_name(self, key, name):
@@ -278,6 +282,9 @@ class StreamingPlatform(db.Model):
         platform_dict = {
             'id': self.id,
             'name': self.name
+            # Entferne URL und Logo URL auch hier
+            # 'url': self.url, 
+            # 'logo_url': self.logo_url
         }
         if include_relationships:
             platform_dict['movies'] = [m.to_dict(include_relationships=False) for m in self.movies]
