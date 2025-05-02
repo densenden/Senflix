@@ -487,13 +487,15 @@ class SQLiteDataManager(DataManagerInterface):
                 movie_dict = fav.movie.to_dict() # Get full movie dict
                 user_name = fav.user.name
                 # Handle potential missing avatar
-                avatar_url = fav.user.avatar.profile_image_url if fav.user.avatar else Avatar().profile_image_url
+                profile_avatar_url = fav.user.avatar.profile_image_url if fav.user.avatar else Avatar().profile_image_url
+                hero_avatar_url = fav.user.avatar.hero_image_url if fav.user.avatar else Avatar().hero_image_url # Get hero image URL
 
                 results.append({
                     'movie': movie_dict,
                     'comment_text': fav.comment,
                     'comment_user_name': user_name,
-                    'comment_user_avatar_url': avatar_url
+                    'comment_user_avatar_url': profile_avatar_url, # For hover info
+                    'comment_user_hero_avatar_url': hero_avatar_url # For background
                 })
 
         except SQLAlchemyError as e:

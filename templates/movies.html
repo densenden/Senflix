@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "components/movie_card.html" import movie_card %}
 {% from 'components/navigation.html' import top_nav, side_nav %}
+{% from 'components/comments_tab.html' import comment_card %}
 
 {% block title %}Movies - SenFlix{% endblock %}
 
@@ -89,51 +90,7 @@
         <h2 class="text-2xl font-bold mb-4 text-gray-100">Recent Comments</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {% for entry in recent_comments %}
-            {# --- Simplified Comment Card --- #}
-            {% set movie = entry.get('movie', {}) %}
-            {% set movie_id = movie.get('id') %}
-            {% set movie_name = movie.get('name', 'Movie') %}
-            {% set movie_year = movie.get('year') %}
-            {% set poster_img = movie.get('omdb_data', {}).get('poster_img') %}
-            {% set comment_text = entry.get('comment_text', '...') %}
-            {% set user_name = entry.get('comment_user_name', 'User') %}
-            {% set avatar_url = entry.get('comment_user_avatar_url') %}
-
-            {# Outer container with link and basic styling #}
-            <a href="{{ url_for('movie_detail', movie_id=movie_id) if movie_id else '#' }}" 
-               class="group relative block h-32 rounded-xl overflow-hidden shadow-lg bg-gray-800 hover:shadow-xl transition-shadow duration-300">
-                
-                {# Background Image: Contained, left-aligned #}
-                <div class="absolute inset-0 w-1/3 bg-no-repeat bg-contain bg-left-center opacity-50 group-hover:opacity-75 transition-opacity duration-300" 
-                     style="{% if poster_img %}background-image: url('{{ url_for('static', filename='movies/' ~ poster_img) }}');{% endif %}">
-                </div>
-                
-                {# Gradient Overlay #}
-                <div class="absolute inset-0 bg-gradient-to-r from-gray-800/95 via-gray-800/80 to-transparent">
-                </div>
-                
-                {# Text Content Area - Padding left to avoid background #}
-                <div class="relative flex flex-col justify-center h-full p-4 pl-[30%] text-gray-100"> {# Adjust pl if needed based on w-1/3 #}
-                    {# Movie Name & Year (Small) #}
-                    <div class="mb-1">
-                        <h4 class="text-xs font-semibold text-gray-300 truncate" title="{{ movie_name }}">{{ movie_name }}</h4>
-                        <p class="text-xs text-gray-400">{{ movie_year }}</p>
-                    </div>
-                    {# Comment Text (Large, Clamped) #}
-                    <p class="text-lg text-gray-100 font-medium line-clamp-2 leading-snug">
-                        {{ comment_text }}
-                    </p>
-                </div>
-                
-                {# Hover Content: Avatar and User Name #}
-                <div class="absolute bottom-2 left-2 flex items-center space-x-2 p-1 rounded-full bg-black/40 
-                            opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    {% if avatar_url %}
-                    <img src="{{ url_for('static', filename=avatar_url) }}" alt="{{ user_name }}" class="w-5 h-5 rounded-full object-cover border border-gray-500">
-                    {% endif %}
-                    <span class="text-xs text-white font-medium">{{ user_name }}</span>
-                </div>
-            </a>
+            {{ comment_card(entry) }}
           {% else %}
             <p>No recent comments.</p>
           {% endfor %}
@@ -184,16 +141,11 @@
   .snap-section { scroll-snap-align: start; min-height: 50vh; }
   
   /* Basic styles for comment card - can be refined */
-  .comment-card-3d {
-    /* Remove 3D specific styles if no longer used */
-    /* background-color: #1f2937; */ /* Fallback bg if no poster */
-  }
-  .line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;  
-    overflow: hidden;
-  }
+  /*.comment-card-3d {*/ /* Removed old class style */
+    /* background-color: #1f2937; */ 
+  /*}*/
+  /* Line clamp is now in the component file */
+  /*.line-clamp-2 { ... } */
 </style>
 
 {# --- Rating Modal --- #}
@@ -349,7 +301,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     initialize3DHoverEffect('.movie-card-3d-wrapper'); // Initialize ONLY for movie cards
-    // initialize3DHoverEffect('.comment-card-3d-wrapper'); // Removed for comments
+    // initialize3DHoverEffect('.comment-card-3d-wrapper'); // Definitely remove call for comments
 
     // --- Movie Card Action Button Handlers ---
     async function handleMovieAction(buttonElement, actionType) {

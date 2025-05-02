@@ -164,7 +164,39 @@ def movie_detail(movie_id):
             
     # OMDB data is already included in movie via get_movie_data
     omdb_data = movie.get('omdb_data') 
-    return render_template('movie_detail.html', movie=movie, watched_users=watched_users, omdb_data=omdb_data, current_user=current_user)
+    
+    # Get comments for this movie
+    comments = []
+    try:
+        # Fetch UserFavorite entries with comments for this movie
+        # Eager load user and avatar info
+        comment_entries = UserFavorite.query.options(
+            joinedload(UserFavorite.user).joinedload(User.avatar)
+        ).filter(
+            UserFavorite.movie_id == movie_id,
+            UserFavorite.comment.isnot(None)
+        ).order_by(UserFavorite.created_at.desc() if hasattr(UserFavorite, 'created_at') else UserFavorite.user_id.desc()).all()
+
+        for entry in comment_entries:
+            if entry.user:
+                 profile_avatar_url = entry.user.avatar.profile_image_url if entry.user.avatar else Avatar().profile_image_url
+                 hero_avatar_url = entry.user.avatar.hero_image_url if entry.user.avatar else Avatar().hero_image_url
+                 comments.append({
+                     'movie': movie, # Pass the movie dict itself for context
+                     'comment_text': entry.comment,
+                     'comment_user_name': entry.user.name,
+                     'comment_user_avatar_url': profile_avatar_url,
+                     'comment_user_hero_avatar_url': hero_avatar_url
+                 })
+    except Exception as e:
+        app.logger.error(f"Error fetching comments for movie {movie_id}: {e}")
+
+    return render_template('movie_detail.html', 
+                         movie=movie, 
+                         watched_users=watched_users, 
+                         omdb_data=omdb_data, 
+                         comments=comments, # Pass comments to the template
+                         current_user=current_user)
 
 @app.route('/toggle_watchlist/<int:movie_id>', methods=['POST'])
 @login_required

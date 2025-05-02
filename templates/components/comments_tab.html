@@ -7,3 +7,66 @@
     {% endfor %}
   </ul>
 </div>
+
+{# === Reusable Comment Card Macro === #}
+{% macro comment_card(entry) %}
+  {# --- Extract Data --- #}
+  {% set movie = entry.get('movie', {}) %}
+  {% set movie_id = movie.get('id') %}
+  {% set movie_name = movie.get('name', 'Movie') %}
+  {% set movie_year = movie.get('year') %}
+  {% set comment_text = entry.get('comment_text', '...') %}
+  {% set user_name = entry.get('comment_user_name', 'User') %}
+  {% set profile_avatar_url = entry.get('comment_user_avatar_url') %}
+  {% set hero_avatar_url = entry.get('comment_user_hero_avatar_url') %}
+
+  {# --- Card Structure --- #}
+  <a href="{{ url_for('movie_detail', movie_id=movie_id) if movie_id else '#' }}" 
+     class="group relative block h-36 rounded-xl overflow-hidden shadow-lg bg-gray-900 hover:shadow-xl transition-shadow duration-300"> {# Increased height slightly: h-36 #}
+      
+      {# Background Image: User's Hero Avatar, Centered, Cover #}
+      <div class="absolute inset-0 bg-no-repeat bg-cover bg-center opacity-30 group-hover:opacity-50 transition-opacity duration-300" 
+           style="{% if hero_avatar_url %}background-image: url('{{ url_for('static', filename=hero_avatar_url) }}');{% endif %}">
+      </div>
+      
+      {# Gradient Overlay (Stronger for readability) #}
+      <div class="absolute inset-0 bg-gradient-to-r from-gray-900/95 via-gray-900/85 to-gray-900/30">
+      </div>
+      
+      {# Text Content Area #}
+      <div class="relative flex flex-col justify-center h-full p-4 text-gray-100">
+          {# Movie Name & Year (Small) #}
+          <div class="mb-1">
+              <h4 class="text-sm font-semibold text-gray-300 truncate" title="{{ movie_name }}">{{ movie_name }}</h4>
+              <p class="text-xs text-gray-400">{{ movie_year }}</p>
+          </div>
+          {# Comment Text (Larger, Clamped) #}
+          <p class="text-xl text-gray-100 font-medium line-clamp-2 leading-snug"> {# Increased size: text-xl #}
+              {{ comment_text }}
+          </p>
+      </div>
+      
+      {# Hover Content: Profile Avatar and User Name #}
+      <div class="absolute bottom-2 left-2 flex items-center space-x-2 p-1 rounded-full bg-black/50 
+                  opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          {% if profile_avatar_url %}
+          <img src="{{ url_for('static', filename=profile_avatar_url) }}" alt="{{ user_name }}" class="w-6 h-6 rounded-full object-cover border-2 border-gray-500"> {# Slightly larger avatar #}
+          {% endif %}
+          <span class="text-sm text-white font-semibold">{{ user_name }}</span> {# Slightly larger name #}
+      </div>
+  </a>
+  {# --- End Card Structure --- #}
+{% endmacro %}
+{# === End Macro === #}
+
+{# Scoped CSS for the component (can be included once) #}
+{# Ensure Tailwind's @layer base includes line-clamp utility or define it here #}
+<style>
+  .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;  
+      overflow: hidden;
+  }
+  /* Add any other specific styles needed only by the comment_card here */
+</style>

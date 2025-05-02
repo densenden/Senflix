@@ -1,6 +1,9 @@
 {# Movie Detail Page: Content & Rating Options #}
 {% extends 'base.html' %}
 {% from 'components/navigation.html' import top_nav %}
+{% from 'components/movie_card.html' import movie_card %}
+{% from 'components/comments_tab.html' import comment_card %}
+
 {% block content %}
 {{ top_nav(current_user=current_user) }}
 <main class="w-full min-h-screen bg-black text-white">
@@ -8,7 +11,6 @@
     <h1 class="text-5xl font-extrabold mb-8 mt-6">{{ movie.title }}</h1>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
       <div class="flex flex-col items-center md:items-end">
-        {% from 'components/movie_card.html' import movie_card %}
         <div class="max-w-xs w-full">
           {{ movie_card(movie) }}
         </div>
@@ -53,6 +55,19 @@
       {% endfor %}
     </div>
   </section>
+
+  {# --- Comments Section --- #}
+  {% if comments %}
+  <section class="w-full max-w-7xl mx-auto px-4 py-8">
+    <h2 class="text-2xl font-bold mb-4">Comments</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      {% for entry in comments %}
+        {{ comment_card(entry) }}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+  {# --- End Comments Section --- #}
 
   {% if omdb_data %}
   <section class="w-full max-w-7xl mx-auto px-4 py-8">
