@@ -71,8 +71,11 @@ body {
 /* .fade-dots, .fade-dots .dot, .fade-dots .dot.active */
 
 #sidebar .sidebar-link.active {
-    color: #ef4444 !important;
+    color: #e50914 !important;
     font-weight: bold;
+    background: linear-gradient(to right, #e50914 4px, transparent 4px);
+    border-radius: 0 6px 6px 0;
+    padding-left: 0.75rem;
 }
 
 /* Buttons */

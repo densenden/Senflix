@@ -15,14 +15,6 @@
           <img src="{{ url_for('static', filename=user.avatar.profile_image_url if user.avatar and user.avatar.profile_image_url else 'avatars/profile/' ~ (user.avatar.image if user.avatar and user.avatar.image else 'avatar_' ~ user.avatar_id ~ '.jpg')) }}" alt="Avatar" class="w-32 h-32 rounded-full border-4 border-blue-500 shadow-2xl">
           <div>
             <h1 class="text-5xl font-extrabold text-white drop-shadow-lg mb-2">{{ user.name }}'s Movies</h1>
-            {% if user.avatar_description %}
-              <p class="text-blue-200 italic mb-2">{{ user.avatar_description }}</p>
-            {% endif %}
-            <p class="text-blue-300">WhatsApp: {{ user.whatsapp_number }}</p>
-            <div class="flex gap-6 mt-2">
-              <span class="text-green-400">Watched: <b>{{ watched|length }}</b></span>
-              <span class="text-yellow-400">Watchlist: <b>{{ watchlist|length }}</b></span>
-            </div>
           </div>
         </div>
       </div>
