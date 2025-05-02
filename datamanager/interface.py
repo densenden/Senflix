@@ -328,7 +328,14 @@ class Category(db.Model):
         if include_relationships:
             # Kombiniere beide Beziehungen
             all_movies = list(set(self.movies + self.movies_m2m))
-            category_dict['movies'] = [m.to_dict(include_relationships=False) for m in all_movies]
+            # Verwende include_relationships=False für die Kategorien der Filme,
+            # aber behalte die OMDB-Daten bei
+            category_dict['movies'] = []
+            for movie in all_movies:
+                movie_dict = movie.to_dict(include_relationships=False)
+                if movie.omdb_data:
+                    movie_dict['omdb_data'] = movie.omdb_data.to_dict()
+                category_dict['movies'].append(movie_dict)
         return category_dict
 
 class MovieOMDB(db.Model):
