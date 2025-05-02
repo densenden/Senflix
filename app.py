@@ -112,28 +112,36 @@ def movies():
         # Add avatars to movies within categories as well
         for category in categories:
             category['movies'] = data_manager._add_watched_avatars_to_movies(category.get('movies', []))
-        # Note: recent_comments already contains movie dicts from favorites, maybe add avatars there too?
-        # recent_comments = data_manager._add_watched_avatars_to_movies(recent_comments) # Consider if needed
-
-        friends_favorites = []
-        if current_user.is_authenticated:
-            # Note: Friends functionality is currently disabled in db_manager
-            friends_favorites = data_manager.get_friends_favorites(current_user.id, limit=10)
             
-        # Remove detailed debug prints
-        # if new_releases: print("[DEBUG] Sample New Release Movie Structure:", new_releases[0])
-        # ... (other debug prints removed)
-        
+        # Get favorites from users with same avatar
+        same_avatar_favorites = []
+        if current_user.is_authenticated:
+            # Get all users with same avatar
+            same_avatar_users = User.query.filter_by(avatar_id=current_user.avatar_id).filter(User.id != current_user.id).all()
+            
+            # Get their favorites
+            for user in same_avatar_users:
+                user_favorites = UserFavorite.query.filter_by(user_id=user.id, watched=True).all()
+                for fav in user_favorites:
+                    movie = data_manager.get_movie_data(fav.movie_id)
+                    if movie:
+                        same_avatar_favorites.append({
+                            'movie': movie,
+                            'user': user,
+                            'rating': fav.rating,
+                            'comment': fav.comment
+                        })
+            
     except Exception as e:
         app.logger.error(f"Error loading movie lists for /movies: {str(e)}")
         # Provide empty lists on error to prevent crashes
         new_releases, popular_movies, top_rated, recent_comments = [], [], [], []
-        friends_favorites, categories, platforms = [], [], []
+        same_avatar_favorites, categories, platforms = [], [], []
 
     return render_template('movies.html',
                          new_releases=new_releases,
                          popular_movies=popular_movies,
-                         friends_favorites=friends_favorites,
+                         same_avatar_favorites=same_avatar_favorites,
                          top_rated=top_rated,
                          recent_comments=recent_comments,
                          categories=categories,
@@ -158,7 +166,7 @@ def movie_detail(movie_id):
             watched_users.append({
                 'id': user.id,
                 'name': user.name,
-                'avatar_url': avatar.profile_image_url if avatar else None, # Handle missing avatar
+                'avatar_url': avatar.profile_image_url if avatar else None, # simple Handle missing avatar
                 'rating': entry.rating
             })
             
@@ -185,6 +193,7 @@ def movie_detail(movie_id):
                      'movie': movie, # Pass the movie dict itself for context
                      'comment_text': entry.comment,
                      'comment_user_name': entry.user.name,
+                     'comment_user_id': entry.user.id,
                      'comment_user_avatar_url': profile_avatar_url,
                      'comment_user_hero_avatar_url': hero_avatar_url
                  })
@@ -264,9 +273,33 @@ def search():
     return render_template('search_results.html', query=query, results=results)
 
 # Obsolete route? Consider removing if not used.
-# @app.route('/users')
-# def users():
-#     ... (implementation omitted) ...
+@app.route('/users')
+def users():
+    """Display all users grouped by their avatars."""
+    try:
+        # Get all users with their avatars
+        users = User.query.options(joinedload(User.avatar)).all()
+        
+        # Group users by avatar
+        avatar_groups = {}
+        for user in users:
+            avatar_name = user.avatar.name if user.avatar else 'Default'
+            if avatar_name not in avatar_groups:
+                avatar_groups[avatar_name] = {
+                    'name': avatar_name,
+                    'users': []
+                }
+            avatar_groups[avatar_name]['users'].append(user)
+        
+        # Convert to list for template
+        avatar_groups = list(avatar_groups.values())
+        
+        return render_template('users.html', 
+                             avatar_groups=avatar_groups,
+                             current_user=current_user)
+    except Exception as e:
+        app.logger.error(f"Error in users route: {e}")
+        return redirect(url_for('movies'))
 
 @app.route('/users/<int:user_id>')
 @login_required
@@ -279,6 +312,14 @@ def user_profile(user_id):
         
     # Favorites list includes watched/watchlist status
     favorites = user_data.get('favorites', [])
+    
+    # Ensure each favorite has the movie data
+    for fav in favorites:
+        if isinstance(fav, dict) and 'movie' not in fav:
+            movie_data = data_manager.get_movie_data(fav.get('movie_id'))
+            if movie_data:
+                fav.update(movie_data)
+    
     watched = [fav for fav in favorites if fav.get('watched')]
     watchlist = [fav for fav in favorites if fav.get('watchlist')]    
     comments = sorted([fav for fav in favorites if fav.get('comment')], 

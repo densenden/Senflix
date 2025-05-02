@@ -15,6 +15,10 @@
 </head>
 <body class="bg-black text-white font-sf min-h-screen w-full">
     <div id="app-root" class="w-full min-h-screen flex flex-col">
+        {# Sidebar nur anzeigen, wenn nicht auf der User Selection Seite #}
+        {% if request.endpoint != 'user_selection' %}
+            {% include 'components/navigation.html' %}
+        {% endif %}
         {% block content %}{% endblock %}
     </div>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>

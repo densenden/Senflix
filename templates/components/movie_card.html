@@ -63,13 +63,12 @@
                     {# Watched Avatars & Action Icons Container #}
                     <div class="flex items-center justify-between mt-1">
                         {# Watched Avatars #}
-                        <div class="flex items-center flex-shrink min-w-0">
+                        <div class="watched-by-avatars">
                             {% for avatar_url in watched_by_avatars %}
                             <img src="{{ url_for('static', filename=avatar_url) }}" 
                                  alt="Watched by user" 
-                                 class="w-5 h-5 rounded-full border border-gray-600 object-cover {{ ' -ml-1.5' if not loop.first else '' }}">
+                                 class="rounded-full border border-gray-600 object-cover {{ ' -ml-1.5' if not loop.first else '' }}">
                             {% endfor %}
-                            {# Add a subtle indicator if there are more watchers than shown? #}
                         </div>
                         
                         {# Action Icons (Watchlist, Watched, Rate) #}
@@ -168,6 +167,32 @@
 /* Ensure background covers area even if image is smaller */
 .movie-card-3d {
     background-color: #1f2937; /* Fallback color (gray-800) */
+}
+
+/* Avatar Styles */
+.movie-card-3d-wrapper .watched-by-avatars {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: auto;
+    padding: 0 12px;
+    height: 40px;
+    flex-shrink: 0;
+}
+
+.movie-card-3d-wrapper .watched-by-avatars img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid rgba(31, 41, 55, 0.8);
+    object-fit: cover;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+}
+
+.movie-card-3d-wrapper .watched-by-avatars img:hover {
+    transform: scale(1.1);
+    z-index: 1;
 }
 
 </style>

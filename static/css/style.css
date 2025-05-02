@@ -1,52 +1,78 @@
 /* Consolidated Custom Styles for SenFlix */
 
+:root {
+    /* Colors */
+    --color-background: #141414;
+    --color-surface: #222;
+    --color-surface-dark: #000;
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #aaaaaa;
+    --color-accent: #e50914;
+    
+    /* Typography */
+    --font-family-base: -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-family-heading: 'Bebas', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-size-sm: 14px;
+    --font-size-base: 16px;
+    --font-size-lg: 24px;
+    
+    /* Spacing */
+    --spacing-xs: 5px;
+    --spacing-sm: 10px;
+    --spacing-md: 15px;
+    --spacing-lg: 20px;
+    
+    /* Layout */
+    --sidebar-width: 150px;
+    --card-min-width: 200px;
+    --border-radius: 5px;
+    
+    /* Transitions */
+    --transition-speed: 0.2s;
+    --transition-function: ease-in-out;
+}
+
 body {
-  background-color: #000;
-  color: #fff;
+    margin: 0;
+    font-family: var(--font-family-base);
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    width: 100vw;
+    min-height: 100vh;
+    box-sizing: border-box;
 }
 
 /* Sidebar Styles */
 #sidebar {
-  position: fixed;
-  top: 4rem;
-  left: 0;
-  width: 16rem;
-  height: calc(100vh - 4rem);
-  z-index: 40;
-  background: rgba(0,0,0,0.8);
-  backdrop-filter: blur(6px);
-  transition: transform 0.5s;
+    position: fixed;
+    top: 4rem;
+    left: 0;
+    width: 16rem;
+    height: calc(100vh - 4rem);
+    z-index: 40;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(6px);
+    transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
 }
-#main-content {
-  transition: margin-left 0.5s, max-width 0.5s;
-  margin-left: 16rem;
+
+#main-content, .main-content {
+    width: 100vw;
+    margin-left: 0 !important;
+    transition: none;
+    position: relative;
+    z-index: 1;
 }
-.sidebar-hidden {
-  margin-left: 0 !important;
-  max-width: 100vw !important;
-}
-@media (max-width: 900px) {
-  #sidebar { width: 12rem; }
-  #main-content { margin-left: 12rem; }
+
+#sidebar.sidebar-hidden {
+    transform: translateX(-100%);
 }
 
 /* Sidebar Indicator & Scrollspy */
-.fade-dots { pointer-events: none; }
-.fade-dots .dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #fff;
-  opacity: 0.3;
-  transition: opacity 0.4s;
-}
-.fade-dots .dot.active {
-  opacity: 1;
-}
+/* .fade-dots, .fade-dots .dot, .fade-dots .dot.active */
+
 #sidebar .sidebar-link.active {
-  color: #ef4444 !important;
-  font-weight: bold;
+    color: #ef4444 !important;
+    font-weight: bold;
 }
 
 /* Buttons */
@@ -114,4 +140,46 @@ body {
 
 .movie-card:hover::after {
     opacity: 1;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    :root {
+        --sidebar-width: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: 180px;
+    }
+}
+
+@media (max-width: 480px) {
+    :root {
+        --card-min-width: 150px;
+    }
+    .sidebar {
+        display: none;
+    }
+    .main-content {
+        margin-left: 0;
+        padding: var(--spacing-sm);
+    }
+}
+
+/* Content Header */
+.content-header {
+    padding: 1rem 2rem;
+    margin-bottom: 2rem;
+    background-color: var(--surface-dark);
+    border-radius: 8px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
 }

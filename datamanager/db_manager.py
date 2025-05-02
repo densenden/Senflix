@@ -4,6 +4,7 @@ from sqlalchemy.orm import joinedload, subqueryload
 from typing import Dict, List, Optional, Any
 import os
 from flask import current_app
+from sqlalchemy.sql import func, and_
 
 class SQLiteDataManager(DataManagerInterface):
     """SQLite implementation of the Data Manager Interface."""
@@ -459,48 +460,57 @@ class SQLiteDataManager(DataManagerInterface):
             logger.error(f"Error getting top rated movies: {e}")
             return []
 
-    def get_recent_commented_movies(self, limit=5, offset=0):
-        """Get recent comments along with movie and user info."""
+    def get_recent_commented_movies(self, limit=6, offset=0):
+        """Get recent comments along with movie and user info, ensuring diverse user representation."""
         results = []
         try:
-            # Eager load related movie (with OMDB) and user (with avatar)
+            # First, get unique users who have commented
+            user_subquery = db.session.query(
+                UserFavorite.user_id,
+                func.max(UserFavorite.created_at).label('latest_comment')
+            ).filter(
+                UserFavorite.comment.isnot(None)
+            ).group_by(
+                UserFavorite.user_id
+            ).subquery()
+
+            # Then get the most recent comment for each user
             favorites_query = UserFavorite.query.options(
                 joinedload(UserFavorite.movie).joinedload(Movie.omdb_data),
-                joinedload(UserFavorite.user).joinedload(User.avatar) # Load user and their avatar
-            ).filter(UserFavorite.comment.isnot(None)) # Only entries with comments
-            
-            # Order by creation date if available
-            if hasattr(UserFavorite, 'created_at'):
-                favorites_query = favorites_query.order_by(UserFavorite.created_at.desc())
-            else:
-                 # Fallback: Order by primary key or another field if no timestamp
-                 # This might not represent true recency but provides stable order
-                 favorites_query = favorites_query.order_by(UserFavorite.user_id.desc(), UserFavorite.movie_id.desc())
-                 logger.warning("Cannot order recent comments by date (created_at missing on UserFavorite?). Falling back to ID order.")
-            
+                joinedload(UserFavorite.user).joinedload(User.avatar)
+            ).join(
+                user_subquery,
+                and_(
+                    UserFavorite.user_id == user_subquery.c.user_id,
+                    UserFavorite.created_at == user_subquery.c.latest_comment
+                )
+            ).order_by(
+                user_subquery.c.latest_comment.desc()
+            )
+
             favorites = favorites_query.limit(limit).offset(offset).all()
 
             for fav in favorites:
-                if not fav.movie or not fav.user: # Skip if essential data is missing
+                if not fav.movie or not fav.user:  # Skip if essential data is missing
                     continue 
                     
-                movie_dict = fav.movie.to_dict() # Get full movie dict
+                movie_dict = fav.movie.to_dict()  # Get full movie dict
                 user_name = fav.user.name
                 # Handle potential missing avatar
                 profile_avatar_url = fav.user.avatar.profile_image_url if fav.user.avatar else Avatar().profile_image_url
-                hero_avatar_url = fav.user.avatar.hero_image_url if fav.user.avatar else Avatar().hero_image_url # Get hero image URL
+                hero_avatar_url = fav.user.avatar.hero_image_url if fav.user.avatar else Avatar().hero_image_url
 
                 results.append({
                     'movie': movie_dict,
                     'comment_text': fav.comment,
                     'comment_user_name': user_name,
-                    'comment_user_avatar_url': profile_avatar_url, # For hover info
-                    'comment_user_hero_avatar_url': hero_avatar_url # For background
+                    'comment_user_avatar_url': profile_avatar_url,
+                    'comment_user_hero_avatar_url': hero_avatar_url
                 })
 
         except SQLAlchemyError as e:
             logger.error(f"DB Error getting recent commented movies: {e}")
-        except Exception as e: # Catch other potential errors during processing
+        except Exception as e:
             logger.error(f"Error processing recent commented movies: {e}")
             
         return results

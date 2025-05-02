@@ -1,29 +1,15 @@
-{# Large 3D interactive category badge with dimmed background image and link #}
-<a href="/category/{{ category_obj.slug or category_obj.id }}" class="category-badge-3d group relative flex items-center justify-center px-10 py-7 rounded-3xl font-extrabold text-2xl text-white shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden"
-     style="perspective:800px; will-change:transform; min-width:320px; min-height:110px; max-width:480px; max-height:180px; text-decoration: none;">
-     {% if category_obj.img_url %}
-     <img src="/{{ category_obj.img_url }}" alt="{{ category_obj.name }} background" class="absolute inset-0 w-full h-full object-cover object-center opacity-70">
-     <div class="absolute inset-0 bg-gradient-to-br from-black/70 via-black/40 to-transparent z-0 rounded-3xl"></div>
-   {% endif %}
-  <span class="relative z-10 drop-shadow-lg">{{ category_obj.name }}</span>
-  <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.category-badge-3d').forEach(function(badge) {
-      let tilt = (e) => {
-        const rect = badge.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const cx = rect.width / 2;
-        const cy = rect.height / 2;
-        const dx = (x - cx) / cx;
-        const dy = (y - cy) / cy;
-        badge.style.transform = `rotateY(${dx*18}deg) rotateX(${-dy*18}deg)`;
-      };
-      badge.addEventListener('mousemove', tilt);
-      badge.addEventListener('mouseleave', () => {
-        badge.style.transform = '';
-      });
-    });
-  });
-  </script>
+{# Kategorie-Badge im Stil der Kommentar-Karte, mit Bild und passender Opazität #}
+<a href="/category/{{ category_obj.slug or category_obj.id }}"
+   class="group relative block h-36 rounded-xl overflow-hidden shadow-lg bg-gray-900 hover:shadow-xl transition-shadow duration-300 w-full max-w-xs"
+   style="text-decoration: none;">
+  {# Hintergrundbild: Kategorie-Bild oder Fallback #}
+  <div class="absolute inset-0 bg-no-repeat bg-cover bg-center opacity-60 group-hover:opacity-90 transition-opacity duration-300"
+       style="background-image: url('{{ url_for('static', filename='categories/' + (category_obj.img or 'default-category.jpg')) }}');">
+  </div>
+  {# Gradient Overlay für bessere Lesbarkeit #}
+  <div class="absolute inset-0 bg-gradient-to-r from-gray-900/95 via-gray-900/85 to-gray-900/30"></div>
+  {# Textinhalt #}
+  <div class="relative flex flex-col justify-center h-full p-4 text-gray-100">
+    <span class="text-xl font-extrabold drop-shadow-lg">{{ category_obj.name }}</span>
+  </div>
 </a>

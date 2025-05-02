@@ -12,107 +12,184 @@
 {% set anchors = [
     {'id': 'new-releases', 'label': 'New Releases'},
     {'id': 'popular', 'label': 'Popular'},
-    {'id': 'friends-favorites', 'label': "Friends' Favorites"},
+    {'id': 'same-avatar-favorites', 'label': "Same Avatar Favorites"},
     {'id': 'top-rated', 'label': 'Top Rated by Community'},
     {'id': 'recent-comments', 'label': 'Recent Comments'}
 ] %}
 
 {{ top_nav(current_user=current_user) }}
 
-<div class="flex flex-row bg-black min-h-screen pt-16 snap-container" style="overflow-y: auto;">
+<div class="flex flex-row bg-black min-h-screen pt-16 snap-container" style="overflow-y: auto; height: 100vh;">
   {{ side_nav(anchors=anchors, categories=categories) }}
   
   <main id="main-content" class="flex-1 bg-black text-gray-100 transition-all duration-500 ease-in-out" style="margin-left: 16rem;">
-    <div class="space-y-12 px-4 md:px-10">
+    <div class="space-y-0">
       
       {# --- Hero Section --- #}
-      <section class="relative h-[48vh] min-h-[320px] flex items-end snap-section" id="hero">
+      <section class="relative h-screen flex items-end snap-section" id="hero">
         <div class="absolute inset-0">
-          <img src="{{ url_for('static', filename='hero.png') }}" alt="Hero background" class="w-full h-full object-cover opacity-40">
-          <div class="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
+          <img src="{{ url_for('static', filename='hero.png') }}" alt="Hero background" class="w-full h-full object-cover opacity-60">
+          <div class="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
         </div>
-        <div class="relative z-10 p-8">
+        <div class="relative z-10 p-8 w-full">
           <h1 class="text-4xl md:text-5xl font-bold mb-2">Welcome back, {{ current_user.name if current_user.is_authenticated else 'Guest' }}!</h1>
           <p class="text-lg text-gray-300">Discover new movies and keep track of your favorites.</p>
         </div>
       </section>
 
       {# --- New Releases Section --- #}
-      <section id="new-releases" class="snap-section">
-        <h2 class="text-2xl font-bold mb-4 text-gray-100">New Releases</h2>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {% for movie in new_releases %}
-            {{ movie_card(movie) }}
-          {% else %}
-            <p>No movies found.</p>
-          {% endfor %}
+      <section id="new-releases" class="snap-section h-screen flex flex-col justify-end relative">
+        <div class="absolute inset-0 z-0">
+          <img src="{{ url_for('static', filename='sections/new-releases.jpg') }}" 
+               alt="New Releases Background" 
+               class="w-full h-full object-cover opacity-50">
+          <div class="absolute inset-0 bg-gradient-to-t from-black via-black/90 to-black/70"></div>
+        </div>
+        <div class="relative z-10 p-8">
+          <h2 class="text-2xl font-bold mb-4 text-gray-100">New Releases</h2>
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {% for movie in new_releases %}
+              {{ movie_card(movie) }}
+            {% else %}
+              <p>No movies found.</p>
+            {% endfor %}
+          </div>
         </div>
       </section>
 
       {# --- Popular Section --- #}
-      <section id="popular" class="snap-section">
-        <h2 class="text-2xl font-bold mb-4 text-gray-100">Popular</h2>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {% for movie in popular_movies %}
-            {{ movie_card(movie) }}
-          {% else %}
-            <p>No movies found.</p>
-          {% endfor %}
+      <section id="popular" class="snap-section h-screen flex flex-col justify-end relative">
+        <div class="absolute inset-0 z-0">
+          <img src="{{ url_for('static', filename='sections/popular.jpg') }}" 
+               alt="Popular Background" 
+               class="w-full h-full object-cover opacity-50">
+          <div class="absolute inset-0 bg-gradient-to-t from-black via-black/90 to-black/70"></div>
+        </div>
+        <div class="relative z-10 p-8">
+          <h2 class="text-2xl font-bold mb-4 text-gray-100">Popular</h2>
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {% for movie in popular_movies %}
+              {{ movie_card(movie) }}
+            {% else %}
+              <p>No movies found.</p>
+            {% endfor %}
+          </div>
         </div>
       </section>
 
-      {# --- Friends' Favorites Section (Currently Disabled) --- #}
-      <section id="friends-favorites" class="snap-section">
-        <h2 class="text-2xl font-bold mb-4 text-gray-100">Friends' Favorites</h2>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {% for movie in friends_favorites %}
-            {{ movie_card(movie) }}
-          {% else %}
-            <p>No friend favorites found (feature disabled).</p>
-          {% endfor %}
-        </div>
-      </section>
+      {# --- Same Avatar Favorites Section --- #}
+      {% if current_user.is_authenticated %}
+        <section id="same-avatar-favorites" class="relative h-screen flex flex-col justify-end snap-section">
+          {# Background Image #}
+          <div class="absolute inset-0 z-0">
+            <img src="{{ url_for('static', filename=current_user.avatar.hero_image_url) }}" 
+                 alt="Background" 
+                 class="w-full h-full object-cover object-center opacity-60">
+            <div class="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-black/60"></div>
+          </div>
+          
+          {# Content #}
+          <div class="relative z-10 p-8">
+            <h2 class="text-3xl font-bold mb-8">Other {{ current_user.avatar.name }} Users' Favorites</h2>
+            {% set users = same_avatar_favorites|map(attribute='user')|unique|list %}
+            {% if users|length == 0 %}
+              <div class="text-center text-gray-400 text-xl py-12">
+                No other users with this avatar found.
+              </div>
+            {% else %}
+              {# User Cards #}
+              <div class="flex gap-4 mb-8 overflow-x-auto pb-4">
+                {% for user in users %}
+                  <div class="flex-shrink-0">
+                    <a href="{{ url_for('user_profile', user_id=user.id) }}" 
+                       class="flex flex-col items-center group">
+                      <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-500 group-hover:border-white transition-all duration-300">
+                        <img src="{{ url_for('static', filename=user.avatar.profile_image_url) }}" 
+                             alt="{{ user.name }}" 
+                             class="w-full h-full object-cover">
+                      </div>
+                      <span class="mt-2 text-sm text-gray-300 group-hover:text-white">{{ user.name }}</span>
+                    </a>
+                  </div>
+                {% endfor %}
+              </div>
+              
+              {# Movie Grid #}
+              {% if same_avatar_favorites %}
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                  {% for fav in same_avatar_favorites %}
+                    <div class="scale-90 hover:scale-100 transition-transform duration-300">
+                      {{ movie_card(fav.movie) }}
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="text-center text-gray-400 text-xl py-12">
+                  No favorites from other users with this avatar yet.
+                </div>
+              {% endif %}
+            {% endif %}
+          </div>
+        </section>
+      {% endif %}
 
       {# --- Top Rated Section --- #}
-      <section id="top-rated" class="snap-section">
-        <h2 class="text-2xl font-bold mb-4 text-gray-100">Top Rated by Community</h2>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {% for movie in top_rated %}
-            {{ movie_card(movie) }}
-          {% else %}
-            <p>No movies found.</p>
-          {% endfor %}
+      <section id="top-rated" class="snap-section h-screen flex flex-col justify-end relative">
+        <div class="absolute inset-0 z-0">
+          <img src="{{ url_for('static', filename='sections/top-rated.jpg') }}" 
+               alt="Top Rated Background" 
+               class="w-full h-full object-cover opacity-50">
+          <div class="absolute inset-0 bg-gradient-to-t from-black via-black/90 to-black/70"></div>
+        </div>
+        <div class="relative z-10 p-8">
+          <h2 class="text-2xl font-bold mb-4 text-gray-100">Top Rated by Community</h2>
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {% for movie in top_rated %}
+              {{ movie_card(movie) }}
+            {% else %}
+              <p>No movies found.</p>
+            {% endfor %}
+          </div>
         </div>
       </section>
 
       {# --- Recent Comments Section --- #}
-      <section id="recent-comments" class="snap-section">
-        <h2 class="text-2xl font-bold mb-4 text-gray-100">Recent Comments</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {% for entry in recent_comments %}
-            {{ comment_card(entry) }}
-          {% else %}
-            <p>No recent comments.</p>
-          {% endfor %}
+      <section id="recent-comments" class="snap-section h-screen flex flex-col justify-end relative">
+        <div class="absolute inset-0 z-0">
+          <img src="{{ url_for('static', filename='sections/comments.jpg') }}" 
+               alt="Comments Background" 
+               class="w-full h-full object-cover opacity-70">
+          <div class="absolute inset-0 bg-gradient-to-t from-black via-black/90 to-black/70"></div>
+        </div>
+        <div class="relative z-10 p-8">
+          <h2 class="text-2xl font-bold mb-4 text-gray-100">Community Comments</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {% if recent_comments and recent_comments|length > 0 %}
+              {% for entry in recent_comments[:6] %}
+                {{ comment_card(entry) }}
+              {% endfor %}
+            {% else %}
+              <p>No comments yet.</p>
+            {% endif %}
+          </div>
         </div>
       </section>
 
       {# --- Category Sections --- #}
       {% for category in categories %}
-      <section id="category-{{ category['id'] }}" class="snap-section min-h-screen relative" style="height: 100vh;">
+      <section id="category-{{ category['id'] }}" class="snap-section h-screen relative flex flex-col justify-end">
         {# Background Image #}
         <div class="absolute inset-0 z-0">
           <img src="{{ url_for('static', filename='categories/' + (category['img'] or 'default-category.jpg')) }}"
                alt="{{ category['name'] }}"
-               class="w-full h-full object-cover opacity-30"
-               onerror="this.src='/static/categories/default-category.jpg';"> {# Fallback via onerror #}
-          <div class="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-black/60"></div> {# Gradient overlay #}
+               class="w-full h-full object-cover opacity-50"
+               onerror="this.src='/static/categories/default-category.jpg';">
+          <div class="absolute inset-0 bg-gradient-to-t from-black via-black/90 to-black/70"></div>
         </div>
         {# Content #}
-        <div class="relative z-10 h-full px-4 md:px-10 py-8 flex flex-col">
+        <div class="relative z-10 p-8">
           <h2 class="text-3xl font-bold mb-6 text-gray-100">{{ category['name'] }}</h2>
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 flex-grow overflow-y-auto pb-8">
-            {# Efficiently display movies for this category using data passed from backend #}
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% set category_movies = category.get('movies', []) %}
             {% if category_movies %}
               {% for movie in category_movies %}
@@ -131,21 +208,72 @@
 
 {# Basic Styling #}
 <style>
-  body { background: #000; }
+  body { 
+    background: #000;
+    overflow: hidden;
+  }
   .sidebar-link { color: #e5e7eb; text-decoration: none; transition: color 0.2s; }
   .sidebar-link:hover { color: #ef4444; }
   .sidebar-link.active { color: #ef4444; font-weight: bold; }
   .sidebar-hidden { margin-left: 0 !important; }
   #sidebar { position: fixed; top: 4rem; left: 0; height: calc(100vh - 4rem); z-index: 40; }
-  .snap-container { scroll-snap-type: y mandatory; }
-  .snap-section { scroll-snap-align: start; min-height: 50vh; }
+  .snap-container { 
+    scroll-snap-type: y mandatory;
+    height: 100vh;
+    overflow-y: scroll;
+    scroll-behavior: smooth;
+  }
+  .snap-section { 
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+  }
   
-  /* Basic styles for comment card - can be refined */
-  /*.comment-card-3d {*/ /* Removed old class style */
-    /* background-color: #1f2937; */ 
-  /*}*/
-  /* Line clamp is now in the component file */
-  /*.line-clamp-2 { ... } */
+  /* Fade out effect for background images */
+  .snap-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 30%;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* Ensure background images are visible */
+  .snap-section .absolute.inset-0 {
+    z-index: 0;
+  }
+  
+  .snap-section .absolute.inset-0 img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.7 !important;
+  }
+
+  /* Avatar image container */
+  .avatar-image-container {
+    width: 12px;
+    height: 12px;
+    border-radius: 9999px;
+    overflow: hidden;
+    border: 1px solid;
+  }
+
+  /* Movie card avatar images */
+  .movie-card-3d-wrapper img[alt="Watched by user"] {
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+    border-width: 1px !important;
+  }
 </style>
 
 {# --- Rating Modal --- #}
