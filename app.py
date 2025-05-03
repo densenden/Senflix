@@ -236,6 +236,24 @@ def rate_movie():
     # rating = max(0.5, min(5, rating)) if rating else None 
     return data_manager.upsert_favorite(current_user.id, movie_id, rating=rating, comment=comment)
 
+@app.route('/get_movie_rating/<int:movie_id>', methods=['GET'])
+@login_required
+@ajax_route
+def get_movie_rating(movie_id):
+    """AJAX endpoint to get a user's rating and comment for a movie."""
+    favorite = data_manager.get_user_favorite(current_user.id, movie_id)
+    if favorite:
+        return {
+            'success': True,
+            'rating': favorite.get('rating'),
+            'comment': favorite.get('comment', '')
+        }
+    return {
+        'success': False,
+        'rating': None,
+        'comment': ''
+    }
+
 @app.route('/profile')
 @login_required
 def profile():

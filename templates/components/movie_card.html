@@ -6,50 +6,44 @@
 {% set omdb_data = movie.get('omdb_data', {}) %}
 {% set imdb_rating = omdb_data.get('imdb_rating') %}
 {% set poster_img = omdb_data.get('poster_img') %}
-{# Watched/Watchlist status - Check current_user's favorites for this movie #}
-{# This requires passing current_user's full favorites list or checking status in backend #}
-{# Simplified check - assuming movie dict might contain user-specific status #}
 {% set is_watched = movie.get('user_watched', False) %}
 {% set is_on_watchlist = movie.get('user_watchlist', False) %}
+{% set is_rated = movie.get('user_rated', False) %}
 {% set watched_by_avatars = movie.get('watched_by_avatars', []) %}
 
 {# --- Card Structure --- #}
-<div class="movie-card-3d-wrapper group aspect-[2/3] rounded-lg overflow-hidden bg-gray-800"
-     style="perspective: 1000px;">
+<div class="movie-card-wrapper group aspect-[2/3] rounded-lg overflow-hidden bg-gray-800" 
+     data-movie-id="{{ movie_id }}">
     {# Link the whole card #}
     <a href="{{ url_for('movie_detail', movie_id=movie_id) }}" 
        class="block w-full h-full relative overflow-hidden rounded-lg">
         
-        {# Background Image applied via CSS #}
-        <div class="movie-card-3d absolute inset-0 w-full h-full shadow-lg transition-transform duration-150 ease-out bg-cover bg-center rounded-lg"
-             style="transform-style: preserve-3d;{% if poster_img %} background-image: url('{{ url_for('static', filename='movies/' ~ poster_img) }}');{% endif %}\"
-             data-movie-id="{{ movie_id }}"
-             data-movie-name="{{ movie_name }}"> 
+        {# Poster Background #}
+        <div class="poster-bg absolute inset-0 w-full h-full transition-transform duration-150 ease-out bg-cover bg-center rounded-lg"
+             {% if poster_img %}style="background-image: url('{{ url_for('static', filename='movies/' ~ poster_img) }}');"{% endif %}>
             
-            {# Placeholder shown only if no poster_img via background #}
+            {# Placeholder text if no poster #}
             {% if not poster_img %}
-            <div class="absolute inset-0 w-full h-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center rounded-lg">
+            <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg">
                 <span class="text-center text-gray-300 text-xs px-2">{{ movie_name }}</span>
             </div>
             {% endif %}
 
-            {# Hover Overlay Content #}
-            <div class="absolute inset-0 flex flex-col p-3 rounded-lg 
+            {# Hover Overlay #}
+            <div class="overlay absolute inset-0 flex flex-col p-3 rounded-lg 
                         bg-gradient-to-t from-black/95 via-black/60 to-transparent 
-                        opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out"
-                 style="transform: translateZ(1px);"> {# Slight Z translation to ensure overlay is on top #}
+                        opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
                 
-                {# Top part of overlay (can be empty or add genre tags later) #}
-                <div class="flex-grow"><!-- Spacer --></div>
+                {# Top part - empty for now #}
+                <div class="flex-grow"></div>
 
-                {# Bottom part of overlay #}
+                {# Bottom part - info and actions #}
                 <div>
-                    {# Movie Title, Year, Rating (Aligned Bottom) #}
+                    {# Movie Title, Year, Rating #}
                     <div class="mb-2">
                         <h3 class="text-white font-bold text-base leading-tight mb-0.5 truncate" title="{{ movie_name }}">{{ movie_name }}</h3>
                         <div class="flex items-center text-xs text-gray-300">
                             <span>{{ movie_year }}</span>
-                            {# Display IMDb rating if available and valid #}
                             {% if imdb_rating and imdb_rating != 'N/A' %}
                             <span class="mx-1.5">|</span>
                             <span class="flex items-center">
@@ -60,40 +54,42 @@
                         </div>
                     </div>
 
-                    {# Watched Avatars & Action Icons Container #}
-                    <div class="flex items-center justify-between mt-1">
-                        {# Watched Avatars #}
-                        <div class="watched-by-avatars">
+                    {# Footer with Avatars and Action Buttons in a fixed-height container #}
+                    <div class="footer-container h-8 flex items-center justify-between pb-1 pt-1">
+                        {# Avatars Container - Left #}
+                        <div class="avatars-container h-full flex -space-x-2 overflow-visible">
                             {% for avatar_url in watched_by_avatars %}
-                            <img src="{{ url_for('static', filename=avatar_url) }}" 
-                                 alt="Watched by user" 
-                                 class="rounded-full border border-gray-600 object-cover {{ ' -ml-1.5' if not loop.first else '' }}">
+                            <div class="avatar-wrapper w-6 h-6 rounded-full overflow-hidden flex-shrink-0 border border-gray-700">
+                                <img src="{{ url_for('static', filename=avatar_url) }}" 
+                                     alt="Watched by user" 
+                                     class="w-full h-full object-cover">
+                            </div>
                             {% endfor %}
                         </div>
                         
-                        {# Action Icons (Watchlist, Watched, Rate) #}
-                        {# Stop propagation to prevent card link trigger #}
-                        <div class="flex items-center space-x-1.5 flex-shrink-0" onclick="event.stopPropagation(); event.preventDefault();">
-                            {# Watchlist Toggle Button #}
+                        {# Action Buttons Container - Right #}
+                        <div class="action-buttons flex space-x-1.5" onclick="event.stopPropagation(); event.preventDefault();">
+                            {# Watchlist Button #}
                             <button 
-                                class="action-icon watchlist-toggle-btn {{ 'action-icon-active' if is_on_watchlist else '' }}" 
+                                class="action-btn watchlist-btn {{ 'active' if is_on_watchlist else '' }}" 
                                 title="{{ 'Remove from Watchlist' if is_on_watchlist else 'Add to Watchlist' }}" 
                                 data-movie-id="{{ movie_id }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 icon-add" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 icon-remove hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                             </button>
-                            {# Watched Toggle Button #}
+                            
+                            {# Watched Button #}
                             <button 
-                                class="action-icon watched-toggle-btn {{ 'action-icon-active' if is_watched else '' }}" 
+                                class="action-btn watched-btn {{ 'active' if is_watched else '' }}" 
                                 title="{{ 'Mark as Unwatched' if is_watched else 'Mark as Watched' }}" 
                                 data-movie-id="{{ movie_id }}">
-                                {# Using an 'eye' icon for watched #}
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 icon-watched" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 icon-unwatched hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
                             </button>
-                            {# Rate Button (Opens Modal) #}
+                            
+                            {# Rate Button #}
                             <button 
-                                class="action-icon rate-btn" 
+                                class="action-btn rate-btn {{ 'active' if is_rated else '' }}" 
                                 title="Rate Movie" 
                                 data-movie-id="{{ movie_id }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
@@ -107,94 +103,167 @@
 </div>
 
 {# --- Styles for Movie Card --- #}
-{# Scoped to this component to avoid global conflicts #}
 <style>
-.movie-card-3d-wrapper .action-icon {
-    background-color: rgba(31, 41, 55, 0.6); /* gray-800 with opacity */
-    border-radius: 9999px; /* Fully rounded */
-    padding: 0.3rem; /* Slightly smaller padding */
-    color: rgba(209, 213, 219, 0.9); /* gray-300 with opacity */
-    transition: background-color 0.2s, color 0.2s, transform 0.1s;
-    line-height: 0; /* Ensure icon is centered */
-    border: 1px solid rgba(75, 85, 99, 0.5); /* gray-600 border */
+/* Main Card Styles */
+.movie-card-wrapper {
+    position: relative;
+    transition: transform 0.3s;
+    perspective: 1000px;
 }
-.movie-card-3d-wrapper .action-icon:hover {
-    background-color: rgba(55, 65, 81, 0.8); /* gray-700 with opacity */
+
+.poster-bg {
+    background-color: #1f2937; /* Fallback color */
+    transform-style: preserve-3d;
+    transition: transform 0.3s;
+}
+
+.movie-card-wrapper:hover .poster-bg {
+    transform: scale(1.05);
+}
+
+/* Fixed Footer Container */
+.footer-container {
+    position: relative;
+    width: 100%;
+}
+
+/* Avatar Container Styles */
+.avatars-container {
+    position: relative;
+    flex-shrink: 0;
+    z-index: 5;
+    padding-left: 4px;
+}
+
+/* Action Button Styles */
+.action-buttons {
+    display: flex;
+    gap: 0.375rem;
+    position: relative;
+    z-index: 10;
+}
+
+.action-btn {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    background: rgba(17, 24, 39, 0.8);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(75, 85, 99, 0.4);
+    color: #9CA3AF;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.action-btn:hover {
+    background: rgba(31, 41, 55, 0.9);
+    border-color: rgba(75, 85, 99, 0.6);
+    color: #E5E7EB;
+    transform: translateY(-1px);
+}
+
+.action-btn.active {
+    background: rgba(220, 38, 38, 0.9);
+    border-color: rgba(220, 38, 38, 0.6);
     color: white;
+}
+
+.action-btn.processing {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.action-btn .icon-add,
+.action-btn .icon-remove,
+.action-btn .icon-watched,
+.action-btn .icon-unwatched {
+    transition: all 0.2s ease;
+}
+
+.action-btn:hover .icon-add,
+.action-btn:hover .icon-remove,
+.action-btn:hover .icon-watched,
+.action-btn:hover .icon-unwatched {
     transform: scale(1.1);
 }
-/* Active state (e.g., on watchlist or watched) */
-.movie-card-3d-wrapper .action-icon-active {
-    background-color: rgba(220, 38, 38, 0.8); /* Tailwind red-600 with opacity */
-    color: white;
-    border-color: rgba(220, 38, 38, 0.9);
-}
-.movie-card-3d-wrapper .action-icon-active:hover {
-    background-color: rgba(185, 28, 28, 1); /* Tailwind red-700 */
-}
 
-/* Show/hide icons for watchlist button based on active state */
-.movie-card-3d-wrapper .watchlist-toggle-btn .icon-remove {
+.action-btn.active .icon-add {
     display: none;
 }
-.movie-card-3d-wrapper .watchlist-toggle-btn.action-icon-active .icon-add {
-    display: none;
-}
-.movie-card-3d-wrapper .watchlist-toggle-btn.action-icon-active .icon-remove {
-    display: inline-block;
+
+.action-btn.active .icon-remove {
+    display: block;
 }
 
-/* Show/hide icons for watched button based on active state */
-.movie-card-3d-wrapper .watched-toggle-btn .icon-unwatched {
+.action-btn:not(.active) .icon-remove {
     display: none;
 }
-.movie-card-3d-wrapper .watched-toggle-btn.action-icon-active .icon-watched {
+
+.action-btn.active .icon-watched {
     display: none;
 }
-.movie-card-3d-wrapper .watched-toggle-btn.action-icon-active .icon-unwatched {
-    display: inline-block;
+
+.action-btn.active .icon-unwatched {
+    display: block;
 }
 
-/* Prevent image selection/dragging on background */
-.movie-card-3d {
-    -webkit-user-drag: none;
-    user-select: none;
-    -moz-user-select: none;
-    -webkit-user-select: none;
-    -ms-user-select: none;
-}
-
-/* Ensure background covers area even if image is smaller */
-.movie-card-3d {
-    background-color: #1f2937; /* Fallback color (gray-800) */
+.action-btn:not(.active) .icon-unwatched {
+    display: none;
 }
 
 /* Avatar Styles */
-.movie-card-3d-wrapper .watched-by-avatars {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-top: auto;
-    padding: 0 12px;
-    height: 40px;
-    flex-shrink: 0;
-}
-
-.movie-card-3d-wrapper .watched-by-avatars img {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 2px solid rgba(31, 41, 55, 0.8);
-    object-fit: cover;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transition: transform 0.2s ease;
-}
-
-.movie-card-3d-wrapper .watched-by-avatars img:hover {
-    transform: scale(1.1);
+.avatar-wrapper {
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
     z-index: 1;
 }
 
+/* Style each avatar with a smooth animation */
+.avatars-container .avatar-wrapper:nth-child(1) { z-index: 5; }
+.avatars-container .avatar-wrapper:nth-child(2) { z-index: 4; }
+.avatars-container .avatar-wrapper:nth-child(3) { z-index: 3; }
+.avatars-container .avatar-wrapper:nth-child(4) { z-index: 2; }
+.avatars-container .avatar-wrapper:nth-child(5) { z-index: 1; }
+
+.avatar-wrapper:hover {
+    transform: translateY(-3px) scale(1.15);
+    z-index: 10;
+}
+
+/* Rating Modal Styles */
+#ratingModal {
+    transition: opacity 0.3s ease;
+}
+
+#ratingModal.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#ratingModal.flex {
+    opacity: 1;
+}
+
+.rating-star {
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.rating-star:hover {
+    transform: scale(1.1);
+}
+
+.rating-star.text-yellow-400 {
+    color: #FBBF24;
+}
+
+.rating-star.text-gray-500 {
+    color: #6B7280;
+}
 </style>
 
 {# --- JavaScript for Movie Card Interactivity (Attached once via movies.html) --- #}

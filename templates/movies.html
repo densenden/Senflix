@@ -273,13 +273,12 @@
     <h2 class="text-2xl font-bold mb-6">Rate Movie</h2>
     
     <form id="ratingForm" class="space-y-6">
-      <input type="hidden" id="modalMovieId" name="movie_id"> {# Renamed ID #}
+      <input type="hidden" id="modalMovieId" name="movie_id">
       
       {# Star Rating Input #}
       <div>
-        <label class="block text-sm font-medium mb-2">Your Rating (1-5 Stars)</label> {# Clarified range #}
+        <label class="block text-sm font-medium mb-2">Your Rating (1-5 Stars)</label>
         <div class="flex items-center space-x-1" id="starRatingContainer">
-          {# Stars 1-5 (0.5 increments internally handled) #}
           {% for i in range(1, 6) %}
           <button type="button" 
                   class="rating-star w-8 h-8 text-gray-500 hover:text-yellow-400 transition-colors duration-150" 
@@ -288,7 +287,7 @@
           </button>
           {% endfor %}
         </div>
-        <input type="hidden" id="ratingValue" name="rating" value="0"> {# Hidden input to store precise rating #}
+        <input type="hidden" id="ratingValue" name="rating" value="0">
       </div>
       
       {# Comment Textarea #}
@@ -324,19 +323,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const ratingInput = document.getElementById('ratingValue');
     const stars = ratingContainer.querySelectorAll('.rating-star');
 
-    window.showRatingModal = function(movieId) {
+    // Show rating modal function
+    function showRatingModal(movieId) {
         document.getElementById('modalMovieId').value = movieId;
-        // TODO: Fetch existing rating/comment for this movie/user if available
-        // resetRatingForm(); // Reset form when showing
         document.getElementById('ratingModal').classList.remove('hidden');
         document.getElementById('ratingModal').classList.add('flex');
     }
 
-    window.hideRatingModal = function() {
+    // Hide rating modal function
+    function hideRatingModal() {
         document.getElementById('ratingModal').classList.add('hidden');
         document.getElementById('ratingModal').classList.remove('flex');
     }
 
+    // Make these functions globally available
+    window.showRatingModal = showRatingModal;
+    window.hideRatingModal = hideRatingModal;
+
+    // Update visual state of stars
     function updateStarsVisual(rating) {
         stars.forEach(star => {
             star.classList.toggle('text-yellow-400', parseFloat(star.dataset.value) <= rating);
@@ -344,47 +348,68 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Add click event listeners to stars
     stars.forEach(star => {
         star.addEventListener('click', () => {
             selectedRating = parseFloat(star.dataset.value);
-            ratingInput.value = selectedRating; // Update hidden input
+            ratingInput.value = selectedRating;
             updateStarsVisual(selectedRating);
         });
-         // Optional: Add mouseover effect for potential rating
-        // star.addEventListener('mouseover', () => updateStarsVisual(parseFloat(star.dataset.value)));
-        // star.addEventListener('mouseleave', () => updateStarsVisual(selectedRating)); 
     });
 
+    // Handle rating form submission
     document.getElementById('ratingForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        // Rating is now directly from the hidden input
-        // formData.append('rating', selectedRating); 
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.textContent = 'Saving...';
         
-        // Simple validation
+        const formData = new FormData(e.target);
+        
         if (parseFloat(formData.get('rating')) <= 0) {
             alert('Please select a rating.');
+            submitButton.disabled = false;
+            submitButton.textContent = 'Submit Rating';
             return;
         }
 
         try {
             const response = await fetch('/rate_movie', {
                 method: 'POST',
-                body: new URLSearchParams(formData) // Send as form data
+                body: new URLSearchParams(formData)
             });
             const result = await response.json();
 
             if (response.ok && result.success) {
                 hideRatingModal();
-                // Maybe show a success message instead of reloading?
-                // alert('Rating submitted!'); 
-                location.reload(); // Or update UI dynamically
+                
+                // Update all rate buttons to active state
+                const movieId = formData.get('movie_id');
+                document.querySelectorAll(`.movie-card-wrapper[data-movie-id="${movieId}"]`).forEach(card => {
+                    const rateButton = card.querySelector('.rate-btn');
+                    if (rateButton) {
+                        rateButton.classList.add('active');
+                    }
+                });
+
+                // Show success message
+                const successMessage = document.createElement('div');
+                successMessage.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg transition-opacity duration-500';
+                successMessage.textContent = 'Rating saved successfully!';
+                document.body.appendChild(successMessage);
+                setTimeout(() => {
+                    successMessage.style.opacity = '0';
+                    setTimeout(() => successMessage.remove(), 500);
+                }, 3000);
             } else {
-                throw new Error(result.error || 'Failed to submit rating');
+                throw new Error(result.error || 'Error saving rating');
             }
         } catch (error) {
             console.error('Rating submission error:', error);
-            alert('Error submitting rating: ' + error.message);
+            alert('Error saving rating: ' + error.message);
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Submit Rating';
         }
     });
 
@@ -422,45 +447,109 @@ document.addEventListener('DOMContentLoaded', function() {
     initialize3DHoverEffect('.movie-card-3d-wrapper'); // Initialize ONLY for movie cards
     // initialize3DHoverEffect('.comment-card-3d-wrapper'); // Definitely remove call for comments
 
-    // --- Movie Card Action Button Handlers ---
+    // --- Movie Action Button Handlers ---
     async function handleMovieAction(buttonElement, actionType) {
         const movieId = buttonElement.dataset.movieId;
         if (!movieId) {
             console.error('Movie ID not found on button');
             return;
         }
-        
-        const endpoint = actionType === 'watchlist' ? `/toggle_watchlist/${movieId}` : `/toggle_watched/${movieId}`;
-        const wasActive = buttonElement.classList.contains('action-icon-active');
-        const titleAdd = actionType === 'watchlist' ? 'Add to Watchlist' : 'Mark as Watched';
-        const titleRemove = actionType === 'watchlist' ? 'Remove from Watchlist' : 'Mark as Unwatched';
 
-        // Optimistic UI update
-        buttonElement.classList.toggle('action-icon-active');
-        buttonElement.title = wasActive ? titleAdd : titleRemove;
+        const wasActive = buttonElement.classList.contains('active');
+        const titleAdd = buttonElement.title;
+        const titleRemove = buttonElement.title.replace('Add', 'Remove').replace('Mark as', 'Mark as Un');
+
+        // Add processing state
+        buttonElement.classList.add('processing');
+
+        // Determine endpoint based on action type
+        const endpoint = actionType === 'watchlist' ? '/toggle_watchlist/' + movieId : '/toggle_watched/' + movieId;
 
         try {
             const response = await fetch(endpoint, { method: 'POST' });
             const result = await response.json();
+            
             if (!response.ok || result.error) {
                 throw new Error(result.error || 'Server error');
             }
-            console.log(`${actionType} toggle successful for movie ${movieId}`);
-            // Update other UI elements if needed (e.g., watched avatars)
-            // Maybe trigger a custom event to refresh avatar section?
+            
+            // Success - Update all instances of this movie card
+            const isNowActive = !wasActive;
+            document.querySelectorAll(`.movie-card-wrapper[data-movie-id="${movieId}"]`).forEach(card => {
+                const actionBtnClass = actionType === 'watchlist' ? '.watchlist-btn' : '.watched-btn';
+                const button = card.querySelector(actionBtnClass);
+                if (button) {
+                    button.classList.toggle('active', isNowActive);
+                }
+            });
+            
+            // Emit a custom event for UI updates
+            document.dispatchEvent(new CustomEvent('movieStatusChanged', {
+                detail: { 
+                    movieId,
+                    actionType,
+                    isActive: isNowActive 
+                }
+            }));
+            
         } catch (error) {
             console.error(`Failed to toggle ${actionType}:`, error);
             // Revert UI on error
-            buttonElement.classList.toggle('action-icon-active', wasActive); // Set back to original state
+            buttonElement.classList.toggle('active', wasActive);
             buttonElement.title = wasActive ? titleRemove : titleAdd;
-            // alert(`Could not update ${actionType}: ` + error.message);
+        } finally {
+            // Remove processing state
+            buttonElement.classList.remove('processing');
         }
     }
 
+    // Handle opening the rating modal
+    function handleRatingButtonClick(button) {
+        const movieId = button.dataset.movieId;
+        if (!movieId) {
+            console.error('Movie ID not found on rate button');
+            return;
+        }
+        
+        // Visual feedback - add processing class
+        button.classList.add('processing');
+        
+        // Fetch existing rating data
+        fetch(`/get_movie_rating/${movieId}`)
+            .then(response => response.json())
+            .then(data => {
+                const ratingValue = document.getElementById('ratingValue');
+                const commentText = document.getElementById('comment');
+                
+                if (data.rating) {
+                    // Pre-fill the rating form with existing data
+                    ratingValue.value = data.rating;
+                    commentText.value = data.comment || '';
+                    updateStarsVisual(data.rating);
+                } else {
+                    // Reset form for new rating
+                    ratingValue.value = '';
+                    commentText.value = '';
+                    updateStarsVisual(0);
+                }
+                
+                // Show the modal
+                showRatingModal(movieId);
+            })
+            .catch(error => {
+                console.error('Error fetching rating:', error);
+                showRatingModal(movieId);
+            })
+            .finally(() => {
+                // Remove processing state
+                button.classList.remove('processing');
+            });
+    }
+
     // Event delegation for action buttons
-    document.getElementById('main-content').addEventListener('click', function(event) {
-        const watchlistButton = event.target.closest('.watchlist-toggle-btn');
-        const watchedButton = event.target.closest('.watched-toggle-btn');
+    document.addEventListener('click', function(event) {
+        const watchlistButton = event.target.closest('.watchlist-btn');
+        const watchedButton = event.target.closest('.watched-btn');
         const rateButton = event.target.closest('.rate-btn');
 
         if (watchlistButton) {
@@ -468,12 +557,18 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (watchedButton) {
             handleMovieAction(watchedButton, 'watched');
         } else if (rateButton) {
-            const movieId = rateButton.dataset.movieId;
-            if (movieId) {
-                window.showRatingModal(movieId);
-            } else {
-                console.error('Movie ID missing on rate button');
-            }
+            handleRatingButtonClick(rateButton);
+        }
+    });
+
+    // Movie status change listener for UI updates
+    document.addEventListener('movieStatusChanged', function(event) {
+        const { movieId, actionType, isActive } = event.detail;
+        
+        // Refresh the relevant sections if needed
+        if (actionType === 'watchlist' || actionType === 'watched') {
+            // Could add code here to refresh the watchlist/watched sections
+            console.log(`${actionType} state changed for movie ${movieId}: ${isActive ? 'active' : 'inactive'}`);
         }
     });
 
@@ -532,6 +627,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // Set initial active link on load
     setActiveLink(); 
+
+    // Add CSS for processing state
+    const style = document.createElement('style');
+    style.textContent = `
+        .action-btn.processing {
+            animation: pulse 1s infinite;
+            pointer-events: none;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
 });
 </script>
 {% endblock %}
