@@ -265,23 +265,46 @@
     height: 1.25rem !important;
     border-width: 1px !important;
   }
+
+  .glass-modal {
+    background: rgba(30, 41, 59, 0.7);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    border-radius: 1.5rem;
+    border: 1px solid rgba(255,255,255,0.18);
+    backdrop-filter: blur(12px);
+  }
+  .rating-star {
+    transition: transform 0.2s, color 0.2s;
+    color: #6B7280;
+  }
+  .rating-star.selected, .rating-star.text-yellow-400 {
+    color: #FBBF24 !important;
+    transform: scale(1.15);
+  }
+  .rating-star:hover {
+    transform: scale(1.2);
+  }
 </style>
 
 {# --- Rating Modal --- #}
-<div id="ratingModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-[9999]">
-  <div class="bg-gray-900 p-6 rounded-lg max-w-md w-full mx-4">
-    <h2 class="text-2xl font-bold mb-6">Rate Movie</h2>
-    
+<div id="ratingModal" class="fixed inset-0 bg-black/60 backdrop-blur-md hidden items-center justify-center z-[9999]">
+  <div class="glass-modal bg-white/10 backdrop-blur-lg p-8 rounded-2xl max-w-md w-full mx-4 shadow-2xl border border-white/20 relative">
+    <button type="button" onclick="hideRatingModal()" class="absolute top-4 right-4 text-gray-300 hover:text-white text-xl">&times;</button>
+    <div id="modalMovieInfo" class="flex items-center mb-6">
+      <img id="modalPoster" src="" alt="Poster" class="w-16 h-24 object-cover rounded-lg shadow mr-4 border border-white/20">
+      <div>
+        <h2 id="modalTitle" class="text-xl font-bold text-white mb-1">Movie Title</h2>
+        <div id="modalYear" class="text-gray-200 text-sm">Year</div>
+      </div>
+    </div>
     <form id="ratingForm" class="space-y-6">
       <input type="hidden" id="modalMovieId" name="movie_id">
-      
-      {# Star Rating Input #}
       <div>
-        <label class="block text-sm font-medium mb-2">Your Rating (1-5 Stars)</label>
+        <label class="block text-sm font-medium mb-2 text-white">Your Rating (1-10 Stars)</label>
         <div class="flex items-center space-x-1" id="starRatingContainer">
-          {% for i in range(1, 6) %}
+          {% for i in range(1, 11) %}
           <button type="button" 
-                  class="rating-star w-8 h-8 text-gray-500 hover:text-yellow-400 transition-colors duration-150" 
+                  class="rating-star w-7 h-7 text-gray-500 hover:text-yellow-400 transition-colors duration-150" 
                   data-value="{{ i }}">
             <svg fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
           </button>
@@ -289,18 +312,14 @@
         </div>
         <input type="hidden" id="ratingValue" name="rating" value="0">
       </div>
-      
-      {# Comment Textarea #}
       <div>
-        <label for="comment" class="block text-sm font-medium mb-2">Your Comment (Optional)</label>
+        <label for="comment" class="block text-sm font-medium mb-2 text-white">Your Comment (Optional)</label>
         <textarea id="comment" name="comment" rows="3"
-                  class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-white"></textarea>
+                  class="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-white placeholder-gray-300"></textarea>
       </div>
-      
-      {# Modal Buttons #}
       <div class="flex justify-end space-x-4">
         <button type="button" onclick="hideRatingModal()" 
-                class="px-4 py-2 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700 transition-colors">
+                class="px-4 py-2 rounded-lg border border-gray-400 text-gray-200 hover:bg-white/10 transition-colors">
           Cancel
         </button>
         <button type="submit" 
@@ -324,75 +343,60 @@ document.addEventListener('DOMContentLoaded', function() {
     const stars = ratingContainer.querySelectorAll('.rating-star');
 
     // Show rating modal function
-    function showRatingModal(movieId) {
+    window.showRatingModal = function(movieId) {
+        // Fetch movie info from card
+        const card = document.querySelector(`.movie-card-wrapper[data-movie-id="${movieId}"]`);
+        if (card) {
+            const poster = card.querySelector('.poster-bg').style.backgroundImage;
+            const title = card.querySelector('h3')?.textContent || '';
+            const year = card.querySelector('.text-xs span')?.textContent || '';
+            document.getElementById('modalPoster').src = poster ? poster.replace('url("','').replace('")','') : '';
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalYear').textContent = year;
+        }
         document.getElementById('modalMovieId').value = movieId;
         document.getElementById('ratingModal').classList.remove('hidden');
         document.getElementById('ratingModal').classList.add('flex');
     }
-
-    // Hide rating modal function
-    function hideRatingModal() {
+    window.hideRatingModal = function() {
         document.getElementById('ratingModal').classList.add('hidden');
         document.getElementById('ratingModal').classList.remove('flex');
     }
-
-    // Make these functions globally available
-    window.showRatingModal = showRatingModal;
-    window.hideRatingModal = hideRatingModal;
-
-    // Update visual state of stars
     function updateStarsVisual(rating) {
         stars.forEach(star => {
-            star.classList.toggle('text-yellow-400', parseFloat(star.dataset.value) <= rating);
-            star.classList.toggle('text-gray-500', parseFloat(star.dataset.value) > rating);
+            star.classList.toggle('text-yellow-400', parseInt(star.dataset.value) <= rating);
+            star.classList.toggle('selected', parseInt(star.dataset.value) <= rating);
+            star.classList.toggle('text-gray-500', parseInt(star.dataset.value) > rating);
         });
     }
-
-    // Add click event listeners to stars
     stars.forEach(star => {
         star.addEventListener('click', () => {
-            selectedRating = parseFloat(star.dataset.value);
+            selectedRating = parseInt(star.dataset.value);
             ratingInput.value = selectedRating;
             updateStarsVisual(selectedRating);
         });
     });
-
-    // Handle rating form submission
     document.getElementById('ratingForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const submitButton = e.target.querySelector('button[type="submit"]');
         submitButton.disabled = true;
         submitButton.textContent = 'Saving...';
-        
         const formData = new FormData(e.target);
-        
-        if (parseFloat(formData.get('rating')) <= 0) {
+        if (parseInt(formData.get('rating')) <= 0) {
             alert('Please select a rating.');
             submitButton.disabled = false;
             submitButton.textContent = 'Submit Rating';
             return;
         }
-
         try {
             const response = await fetch('/rate_movie', {
                 method: 'POST',
                 body: new URLSearchParams(formData)
             });
             const result = await response.json();
-
             if (response.ok && result.success) {
                 hideRatingModal();
-                
-                // Update all rate buttons to active state
-                const movieId = formData.get('movie_id');
-                document.querySelectorAll(`.movie-card-wrapper[data-movie-id="${movieId}"]`).forEach(card => {
-                    const rateButton = card.querySelector('.rate-btn');
-                    if (rateButton) {
-                        rateButton.classList.add('active');
-                    }
-                });
-
-                // Show success message
+                document.querySelectorAll(`.movie-card-wrapper[data-movie-id="${formData.get('movie_id')}"] .rate-btn`).forEach(btn => btn.classList.add('active'));
                 const successMessage = document.createElement('div');
                 successMessage.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg transition-opacity duration-500';
                 successMessage.textContent = 'Rating saved successfully!';
@@ -405,7 +409,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(result.error || 'Error saving rating');
             }
         } catch (error) {
-            console.error('Rating submission error:', error);
             alert('Error saving rating: ' + error.message);
         } finally {
             submitButton.disabled = false;
