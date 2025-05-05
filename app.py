@@ -450,5 +450,91 @@ def category_detail(category_id):
     
     return render_template('category_detail.html', category=category_data, current_user=current_user)
 
+@app.route('/avatar/<int:avatar_id>')
+def avatar_detail(avatar_id):
+    """Display details for a specific avatar."""
+    try:
+        # Get avatar details
+        avatar = Avatar.query.get(avatar_id)
+        if not avatar:
+            flash('Avatar not found', 'error')
+            return redirect(url_for('movies'))
+
+        # Get users with this avatar
+        users = User.query.filter_by(avatar_id=avatar_id).all()
+
+        # Get favorites from users with this avatar
+        favorites = []
+        favorite_movie_ids = set()  # To avoid duplicates
+        limit_per_section = 10
+
+        for user in users:
+            if len(favorites) >= limit_per_section:
+                break
+
+            user_favorites = UserFavorite.query.filter_by(
+                user_id=user.id,
+                favorite=True
+            ).limit(limit_per_section - len(favorites)).all()
+
+            for fav in user_favorites:
+                if fav.movie_id not in favorite_movie_ids:
+                    movie_data = data_manager.get_movie_data(fav.movie_id)
+                    if movie_data:
+                        movie_with_status = data_manager._add_watched_avatars_to_movies([movie_data])[0]
+                        favorites.append({
+                            'movie': movie_with_status,
+                            'user': user,
+                            'rating': fav.rating,
+                            'comment': fav.comment
+                        })
+                        favorite_movie_ids.add(fav.movie_id)
+                        if len(favorites) >= limit_per_section:
+                            break
+
+        # Get popular categories among users with this avatar
+        popular_categories = []
+        try:
+            # Query to get category counts from favorites of users with this avatar
+            category_counts = db.session.query(
+                Category.name,
+                db.func.count(movie_categories.c.movie_id).label('count')
+            ).join(
+                movie_categories,
+                Category.id == movie_categories.c.category_id
+            ).join(
+                UserFavorite,
+                movie_categories.c.movie_id == UserFavorite.movie_id
+            ).join(
+                User,
+                UserFavorite.user_id == User.id
+            ).filter(
+                User.avatar_id == avatar_id,
+                UserFavorite.favorite == True
+            ).group_by(
+                Category.name
+            ).order_by(
+                db.desc('count')
+            ).limit(8).all()
+
+            popular_categories = [
+                {'name': name, 'count': count}
+                for name, count in category_counts
+            ]
+        except Exception as e:
+            app.logger.error(f"Error fetching popular categories: {e}")
+
+        return render_template('avatar_detail.html',
+                             avatar=avatar,
+                             users=users,
+                             favorites=favorites,
+                             popular_categories=popular_categories,
+                             current_user=current_user)
+
+    except Exception as e:
+        app.logger.error(f"Error in avatar_detail route: {e}")
+        flash('Error loading avatar details', 'error')
+        return redirect(url_for('movies'))
+
 if __name__=='__main__':
     app.run(debug=True, port=5002)

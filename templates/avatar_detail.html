@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% import 'components/movie_card.html' as mc %}
+{% from 'components/navigation.html' import top_nav, side_nav %}
+{% block content %}
+{{ top_nav(current_user=current_user) }}
+<div class="flex flex-row bg-black min-h-screen w-full">
+  <div id="main-content" class="flex-1 w-full">
+    <div class="text-white bg-black w-full">
+      <div class="relative h-[48vh] min-h-[320px] flex mb-12 w-full">
+        <img src="{{ url_for('static', filename=avatar.hero_image_url) }}" alt="Avatar Hero" class="absolute inset-0 w-full h-full object-cover opacity-70" style="object-position: center 30%;">
+        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent"></div>
+        <div class="relative z-10 px-8 pb-12 flex items-end gap-8 w-full self-end">
+          <img src="{{ url_for('static', filename=avatar.profile_image_url) }}" alt="Avatar" class="w-32 h-32 rounded-full border-4 border-blue-500 shadow-2xl">
+          <div>
+            <h1 class="text-5xl font-extrabold text-white drop-shadow-lg mb-2">{{ avatar.name }}</h1>
+            <p class="text-xl text-gray-300 max-w-2xl">{{ avatar.description }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-full px-4 pt-20">
+        {# Users with same avatar #}
+        <h3 class="text-2xl font-semibold mb-4">Users with this Avatar ({{ users|length }})</h3>
+        {% if users %}
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-12">
+            {% for user in users %}
+              <a href="{{ url_for('user_profile', user_id=user.id) }}" class="group">
+                <div class="bg-gray-900/90 rounded-xl p-4 shadow-lg flex flex-col items-center gap-2 hover:bg-gray-800/90 transition-colors">
+                  <img src="{{ url_for('static', filename=user.avatar.profile_image_url) }}" alt="{{ user.name }}" class="w-20 h-20 rounded-full border-2 border-blue-500 group-hover:border-white transition">
+                  <span class="text-lg font-semibold text-center">{{ user.name }}</span>
+                </div>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p>No users with this avatar yet.</p>
+        {% endif %}
+
+        {# Popular categories among users with this avatar #}
+        <h3 class="text-2xl font-semibold mb-4 mt-12">Popular Categories</h3>
+        {% if popular_categories %}
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-12">
+            {% for category in popular_categories %}
+              <div class="bg-gray-900/90 rounded-xl p-4 shadow-lg">
+                <h4 class="text-xl font-bold mb-2">{{ category.name }}</h4>
+                <p class="text-gray-400">{{ category.count }} movies</p>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p>No category data available.</p>
+        {% endif %}
+
+        {# Favorites from users with this avatar #}
+        <h3 class="text-2xl font-semibold mb-4 mt-12">Popular Movies</h3>
+        {% if favorites %}
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-12">
+            {% for fav in favorites %}
+              <div class="scale-90 hover:scale-100 transition-transform duration-300">
+                {{ mc.movie_card(fav.movie) }}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p>No favorite movies yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} 

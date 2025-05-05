@@ -8,12 +8,14 @@
     <div class="text-white bg-black w-full">
       <div class="relative h-[48vh] min-h-[320px] flex mb-12 w-full">
         {% set hero_img = user.avatar.hero_image_url if user.avatar and user.avatar.hero_image_url else 'avatars/hero/avatar_' ~ user.avatar_id ~ '.jpg' %}
-        <img src="{{ url_for('static', filename=hero_img) }}" alt="Avatar Hero" class="absolute inset-0 w-full h-full object-cover object-center opacity-70">
+        <img src="{{ url_for('static', filename=hero_img) }}" alt="Avatar Hero" class="absolute inset-0 w-full h-full object-cover opacity-70" style="object-position: center 30%;">
         <div class="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent"></div>
         <div class="relative z-10 px-8 pb-12 flex items-end gap-8 w-full self-end">
-          <img src="{{ url_for('static', filename=user.avatar.profile_image_url if user.avatar and user.avatar.profile_image_url else 'avatars/profile/' ~ (user.avatar.image if user.avatar and user.avatar.image else 'avatar_' ~ user.avatar_id ~ '.jpg')) }}" alt="Avatar" class="w-32 h-32 rounded-full border-4 border-blue-500 shadow-2xl">
+          <a href="{{ url_for('avatar_detail', avatar_id=user['avatar']['id']) }}" class="group">
+            <img src="{{ url_for('static', filename=user['avatar']['profile_image_url'] if user['avatar'] else 'avatars/profile/avatar_' ~ user['avatar']['id'] ~ '.jpg') }}" alt="Avatar" class="w-32 h-32 rounded-full border-4 border-blue-500 shadow-2xl group-hover:border-white transition-colors">
+          </a>
           <div>
-            <h1 class="text-5xl font-extrabold text-white drop-shadow-lg mb-2">{{ user.name }}'s Movies</h1>
+            <h1 class="text-5xl font-extrabold text-white drop-shadow-lg mb-2">{{ user['name'] }}'s Movies</h1>
           </div>
         </div>
       </div>
