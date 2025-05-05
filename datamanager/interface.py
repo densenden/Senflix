@@ -228,6 +228,7 @@ class UserFavorite(db.Model):
     movie_id = db.Column(db.Integer, db.ForeignKey('movies.id'), primary_key=True)
     watched = db.Column(db.Boolean, default=False)
     watchlist = db.Column(db.Boolean, default=False)
+    favorite = db.Column(db.Boolean, default=False)
     rating = db.Column(db.Float)
     comment = db.Column(db.Text)
     # created_at = db.Column(db.DateTime, server_default=db.func.now()) # REMOVED as per user request
@@ -244,6 +245,7 @@ class UserFavorite(db.Model):
             'movie_id': self.movie_id,
             'watched': self.watched,
             'watchlist': self.watchlist,
+            'favorite': self.favorite,
             'rating': self.rating,
             'comment': self.comment
             # 'created_at': self.created_at.isoformat() if self.created_at else None, # REMOVED

@@ -382,9 +382,7 @@ def add_movie(user_id):
 @login_required
 def update_movie(user_id, movie_id):
     """Display form or handle updating a movie in a user's list."""
-    # Add authorization check: if current_user.id != user_id: ...
 
-    # Get existing favorite data
     fav = data_manager.get_user_favorite(user_id, movie_id) # Assumes get_user_favorite exists
     if not fav:
         flash('Movie not found in your lists','error')
@@ -425,11 +423,6 @@ def category_detail(category_id):
     category_data['movies'] = movies_in_category # Add movies separately
     
     return render_template('category_detail.html', category=category_data, current_user=current_user)
-
-# Temporary test route removed
-# @app.route('/test_movie_data/<int:movie_id>')
-# def test_movie_data(movie_id):
-#     # ... (implementation removed) ...
 
 if __name__=='__main__':
     app.run(debug=True, port=5002)

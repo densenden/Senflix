@@ -40,7 +40,9 @@
           <h2 class="text-2xl font-bold mb-4 text-gray-100">New Releases</h2>
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for movie in new_releases %}
-              {{ movie_card(movie) }}
+              <div style="overflow: visible;">
+                {{ movie_card(movie) }}
+              </div>
             {% else %}
               <p>No movies found.</p>
             {% endfor %}
@@ -60,7 +62,9 @@
           <h2 class="text-2xl font-bold mb-4 text-gray-100">Popular</h2>
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for movie in popular_movies %}
-              {{ movie_card(movie) }}
+              <div style="overflow: visible;">
+                {{ movie_card(movie) }}
+              </div>
             {% else %}
               <p>No movies found.</p>
             {% endfor %}
@@ -109,7 +113,7 @@
               {% if same_avatar_favorites %}
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
                   {% for fav in same_avatar_favorites %}
-                    <div class="scale-90 hover:scale-100 transition-transform duration-300">
+                    <div class="scale-90 hover:scale-100 transition-transform duration-300" style="overflow: visible;">
                       {{ movie_card(fav.movie) }}
                     </div>
                   {% endfor %}
@@ -136,7 +140,9 @@
           <h2 class="text-2xl font-bold mb-4 text-gray-100">Top Rated by Community</h2>
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for movie in top_rated %}
-              {{ movie_card(movie) }}
+              <div style="overflow: visible;">
+                {{ movie_card(movie) }}
+              </div>
             {% else %}
               <p>No movies found.</p>
             {% endfor %}
@@ -184,7 +190,9 @@
             {% set category_movies = category.get('movies', []) %}
             {% if category_movies %}
               {% for movie in category_movies %}
-                {{ movie_card(movie) }}
+                <div style="overflow: visible;">
+                  {{ movie_card(movie) }}
+                </div>
               {% endfor %}
             {% else %}
               <p>No movies found in this category.</p>
@@ -286,365 +294,5 @@
   }
 </style>
 
-{# --- Rating Modal --- #}
-<div id="ratingModal" class="fixed inset-0 bg-black/60 backdrop-blur-md hidden items-center justify-center z-[9999]">
-  <div class="glass-modal bg-white/10 backdrop-blur-lg p-8 rounded-2xl max-w-md w-full mx-4 shadow-2xl border border-white/20 relative">
-    <button type="button" onclick="hideRatingModal()" class="absolute top-4 right-4 text-gray-300 hover:text-white text-xl">&times;</button>
-    <div id="modalMovieInfo" class="flex items-center mb-6">
-      <img id="modalPoster" src="" alt="Poster" class="w-16 h-24 object-cover rounded-lg shadow mr-4 border border-white/20">
-      <div>
-        <h2 id="modalTitle" class="text-xl font-bold text-white mb-1">Movie Title</h2>
-        <div id="modalYear" class="text-gray-200 text-sm">Year</div>
-      </div>
-    </div>
-    <form id="ratingForm" class="space-y-6">
-      <input type="hidden" id="modalMovieId" name="movie_id">
-      <div>
-        <label class="block text-sm font-medium mb-2 text-white">Your Rating (1-10 Stars)</label>
-        <div class="flex items-center space-x-1" id="starRatingContainer">
-          {% for i in range(1, 11) %}
-          <button type="button" 
-                  class="rating-star w-7 h-7 text-gray-500 hover:text-yellow-400 transition-colors duration-150" 
-                  data-value="{{ i }}">
-            <svg fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-          </button>
-          {% endfor %}
-        </div>
-        <input type="hidden" id="ratingValue" name="rating" value="0">
-      </div>
-      <div>
-        <label for="comment" class="block text-sm font-medium mb-2 text-white">Your Comment (Optional)</label>
-        <textarea id="comment" name="comment" rows="3"
-                  class="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-white placeholder-gray-300"></textarea>
-      </div>
-      <div class="flex justify-end space-x-4">
-        <button type="button" onclick="hideRatingModal()" 
-                class="px-4 py-2 rounded-lg border border-gray-400 text-gray-200 hover:bg-white/10 transition-colors">
-          Cancel
-        </button>
-        <button type="submit" 
-                class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors">
-          Submit Rating
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
-
 {# --- JavaScript --- #}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Removed image fallback logic
-
-    // --- Rating Modal Logic ---
-    let selectedRating = 0;
-    const ratingContainer = document.getElementById('starRatingContainer');
-    const ratingInput = document.getElementById('ratingValue');
-    const stars = ratingContainer.querySelectorAll('.rating-star');
-
-    // Show rating modal function
-    window.showRatingModal = function(movieId) {
-        // Fetch movie info from card
-        const card = document.querySelector(`.movie-card-wrapper[data-movie-id="${movieId}"]`);
-        if (card) {
-            const poster = card.querySelector('.poster-bg').style.backgroundImage;
-            const title = card.querySelector('h3')?.textContent || '';
-            const year = card.querySelector('.text-xs span')?.textContent || '';
-            document.getElementById('modalPoster').src = poster ? poster.replace('url("','').replace('")','') : '';
-            document.getElementById('modalTitle').textContent = title;
-            document.getElementById('modalYear').textContent = year;
-        }
-        document.getElementById('modalMovieId').value = movieId;
-        document.getElementById('ratingModal').classList.remove('hidden');
-        document.getElementById('ratingModal').classList.add('flex');
-    }
-    window.hideRatingModal = function() {
-        document.getElementById('ratingModal').classList.add('hidden');
-        document.getElementById('ratingModal').classList.remove('flex');
-    }
-    function updateStarsVisual(rating) {
-        stars.forEach(star => {
-            star.classList.toggle('text-yellow-400', parseInt(star.dataset.value) <= rating);
-            star.classList.toggle('selected', parseInt(star.dataset.value) <= rating);
-            star.classList.toggle('text-gray-500', parseInt(star.dataset.value) > rating);
-        });
-    }
-    stars.forEach(star => {
-        star.addEventListener('click', () => {
-            selectedRating = parseInt(star.dataset.value);
-            ratingInput.value = selectedRating;
-            updateStarsVisual(selectedRating);
-        });
-    });
-    document.getElementById('ratingForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const submitButton = e.target.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
-        submitButton.textContent = 'Saving...';
-        const formData = new FormData(e.target);
-        if (parseInt(formData.get('rating')) <= 0) {
-            alert('Please select a rating.');
-            submitButton.disabled = false;
-            submitButton.textContent = 'Submit Rating';
-            return;
-        }
-        try {
-            const response = await fetch('/rate_movie', {
-                method: 'POST',
-                body: new URLSearchParams(formData)
-            });
-            const result = await response.json();
-            if (response.ok && result.success) {
-                hideRatingModal();
-                document.querySelectorAll(`.movie-card-wrapper[data-movie-id="${formData.get('movie_id')}"] .rate-btn`).forEach(btn => btn.classList.add('active'));
-                const successMessage = document.createElement('div');
-                successMessage.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg transition-opacity duration-500';
-                successMessage.textContent = 'Rating saved successfully!';
-                document.body.appendChild(successMessage);
-                setTimeout(() => {
-                    successMessage.style.opacity = '0';
-                    setTimeout(() => successMessage.remove(), 500);
-                }, 3000);
-            } else {
-                throw new Error(result.error || 'Error saving rating');
-            }
-        } catch (error) {
-            alert('Error saving rating: ' + error.message);
-        } finally {
-            submitButton.disabled = false;
-            submitButton.textContent = 'Submit Rating';
-        }
-    });
-
-    // --- Movie Card & Comment Card 3D Hover Effect ---
-    function initialize3DHoverEffect(selector) {
-        const cardWrappers = document.querySelectorAll(selector);
-        cardWrappers.forEach(wrapper => {
-            // Prevent attaching multiple listeners
-            if (wrapper.dataset.interactiveAttached === 'true') return;
-            wrapper.dataset.interactiveAttached = 'true';
-
-            // Only apply to movie cards now
-            const card = wrapper.querySelector('.movie-card-3d'); 
-            if (!card) return;
-
-            const tiltIntensity = 10; // Adjust tilt intensity
-
-            wrapper.addEventListener('mousemove', (e) => {
-                const rect = wrapper.getBoundingClientRect();
-                // Calculate position relative to the card center
-                const x = e.clientX - rect.left - rect.width / 2;
-                const y = e.clientY - rect.top - rect.height / 2;
-                // Calculate rotation angles
-                const rotateY = (x / (rect.width / 2)) * tiltIntensity;
-                const rotateX = (y / (rect.height / 2)) * -tiltIntensity;
-                // Apply the transform
-                card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.03)`;
-            });
-
-            wrapper.addEventListener('mouseleave', () => {
-                card.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)'; // Reset transform
-            });
-        });
-    }
-    initialize3DHoverEffect('.movie-card-3d-wrapper'); // Initialize ONLY for movie cards
-    // initialize3DHoverEffect('.comment-card-3d-wrapper'); // Definitely remove call for comments
-
-    // --- Movie Action Button Handlers ---
-    async function handleMovieAction(buttonElement, actionType) {
-        const movieId = buttonElement.dataset.movieId;
-        if (!movieId) {
-            console.error('Movie ID not found on button');
-            return;
-        }
-
-        const wasActive = buttonElement.classList.contains('active');
-        const titleAdd = buttonElement.title;
-        const titleRemove = buttonElement.title.replace('Add', 'Remove').replace('Mark as', 'Mark as Un');
-
-        // Add processing state
-        buttonElement.classList.add('processing');
-
-        // Determine endpoint based on action type
-        const endpoint = actionType === 'watchlist' ? '/toggle_watchlist/' + movieId : '/toggle_watched/' + movieId;
-
-        try {
-            const response = await fetch(endpoint, { method: 'POST' });
-            const result = await response.json();
-            
-            if (!response.ok || result.error) {
-                throw new Error(result.error || 'Server error');
-            }
-            
-            // Success - Update all instances of this movie card
-            const isNowActive = !wasActive;
-            document.querySelectorAll(`.movie-card-wrapper[data-movie-id="${movieId}"]`).forEach(card => {
-                const actionBtnClass = actionType === 'watchlist' ? '.watchlist-btn' : '.watched-btn';
-                const button = card.querySelector(actionBtnClass);
-                if (button) {
-                    button.classList.toggle('active', isNowActive);
-                }
-            });
-            
-            // Emit a custom event for UI updates
-            document.dispatchEvent(new CustomEvent('movieStatusChanged', {
-                detail: { 
-                    movieId,
-                    actionType,
-                    isActive: isNowActive 
-                }
-            }));
-            
-        } catch (error) {
-            console.error(`Failed to toggle ${actionType}:`, error);
-            // Revert UI on error
-            buttonElement.classList.toggle('active', wasActive);
-            buttonElement.title = wasActive ? titleRemove : titleAdd;
-        } finally {
-            // Remove processing state
-            buttonElement.classList.remove('processing');
-        }
-    }
-
-    // Handle opening the rating modal
-    function handleRatingButtonClick(button) {
-        const movieId = button.dataset.movieId;
-        if (!movieId) {
-            console.error('Movie ID not found on rate button');
-            return;
-        }
-        
-        // Visual feedback - add processing class
-        button.classList.add('processing');
-        
-        // Fetch existing rating data
-        fetch(`/get_movie_rating/${movieId}`)
-            .then(response => response.json())
-            .then(data => {
-                const ratingValue = document.getElementById('ratingValue');
-                const commentText = document.getElementById('comment');
-                
-                if (data.rating) {
-                    // Pre-fill the rating form with existing data
-                    ratingValue.value = data.rating;
-                    commentText.value = data.comment || '';
-                    updateStarsVisual(data.rating);
-                } else {
-                    // Reset form for new rating
-                    ratingValue.value = '';
-                    commentText.value = '';
-                    updateStarsVisual(0);
-                }
-                
-                // Show the modal
-                showRatingModal(movieId);
-            })
-            .catch(error => {
-                console.error('Error fetching rating:', error);
-                showRatingModal(movieId);
-            })
-            .finally(() => {
-                // Remove processing state
-                button.classList.remove('processing');
-            });
-    }
-
-    // Event delegation for action buttons
-    document.addEventListener('click', function(event) {
-        const watchlistButton = event.target.closest('.watchlist-btn');
-        const watchedButton = event.target.closest('.watched-btn');
-        const rateButton = event.target.closest('.rate-btn');
-
-        if (watchlistButton) {
-            handleMovieAction(watchlistButton, 'watchlist');
-        } else if (watchedButton) {
-            handleMovieAction(watchedButton, 'watched');
-        } else if (rateButton) {
-            handleRatingButtonClick(rateButton);
-        }
-    });
-
-    // Movie status change listener for UI updates
-    document.addEventListener('movieStatusChanged', function(event) {
-        const { movieId, actionType, isActive } = event.detail;
-        
-        // Refresh the relevant sections if needed
-        if (actionType === 'watchlist' || actionType === 'watched') {
-            // Could add code here to refresh the watchlist/watched sections
-            console.log(`${actionType} state changed for movie ${movieId}: ${isActive ? 'active' : 'inactive'}`);
-        }
-    });
-
-    // --- General UI & Navigation Logic ---
-    
-    // Filter logic (placeholder)
-    const categoryFilter = document.getElementById('category-filter');
-    const platformFilter = document.getElementById('platform-filter');
-    function applyFilters() {
-        const categoryId = categoryFilter ? categoryFilter.value : null;
-        const platformId = platformFilter ? platformFilter.value : null;
-        console.log('Filtering - Category:', categoryId, 'Platform:', platformId);
-        // Add actual filtering logic here (e.g., redirect or AJAX fetch)
-    }
-    if (categoryFilter) categoryFilter.addEventListener('change', applyFilters);
-    if (platformFilter) platformFilter.addEventListener('change', applyFilters);
-
-    // Scrollspy for sidebar
-    const sidebarLinks = document.querySelectorAll('.sidebar-link');
-    const sections = document.querySelectorAll('.snap-section');
-    const mainContent = document.getElementById('main-content');
-    
-    function setActiveLink() {
-        if (!mainContent) return;
-        let currentSectionId = null;
-        const scrollPosition = mainContent.scrollTop + (window.innerHeight * 0.3); // Offset for better detection
-
-        sections.forEach(section => {
-            if (section.offsetTop <= scrollPosition && 
-                section.offsetTop + section.offsetHeight > scrollPosition) {
-                currentSectionId = section.getAttribute('id');
-            }
-        });
-
-        sidebarLinks.forEach(link => {
-            link.classList.remove('active');
-            const href = link.getAttribute('href');
-            if (href && href === `#${currentSectionId}`) {
-                link.classList.add('active');
-            }
-        });
-        
-        // Default to first if none found (e.g., at top)
-        if (!currentSectionId && sidebarLinks.length > 0) {
-             const firstVisibleSection = sections[0] ? sections[0].id : null;
-             if(firstVisibleSection){
-                 const firstLink = document.querySelector(`.sidebar-link[href="#${firstVisibleSection}"]`);
-                 if(firstLink) firstLink.classList.add('active');
-             }
-        }
-    }
-    
-    // Use main content scroll event if sidebar is fixed
-    if (mainContent) {
-        mainContent.addEventListener('scroll', setActiveLink);
-    }
-    // Set initial active link on load
-    setActiveLink(); 
-
-    // Add CSS for processing state
-    const style = document.createElement('style');
-    style.textContent = `
-        .action-btn.processing {
-            animation: pulse 1s infinite;
-            pointer-events: none;
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-    `;
-    document.head.appendChild(style);
-});
-</script>
 {% endblock %}

@@ -24,9 +24,6 @@
           <span>IMDb: {{ movie.imdb_rating or (omdb_data.imdb_rating if omdb_data) or 'N/A' }}/10</span>
         </div>
         <div class="text-base text-gray-200 mb-4 max-w-2xl">{{ movie.plot or (omdb_data.plot if omdb_data) or 'No plot available.' }}</div>
-        <div class="mt-2">
-          {% include 'components/rating_component.html' %}
-        </div>
       </div>
     </div>
   </section>

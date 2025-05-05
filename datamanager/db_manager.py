@@ -247,21 +247,21 @@ class SQLiteDataManager(DataManagerInterface):
             if platform_ids is not None:
                 platforms = StreamingPlatform.query.filter(StreamingPlatform.id.in_(platform_ids)).all()
                 movie.streaming_platforms = platforms # Replace existing platforms
-
             if category_ids is not None:
                 categories = Category.query.filter(Category.id.in_(category_ids)).all()
                 movie.categories = categories # Replace existing categories
 
             db.session.commit()
-            # Return the updated full movie data
-            return self.get_movie_data(movie.id)
+            # Return full data after update
+            return self.get_movie_data(movie_id)
         except SQLAlchemyError as e:
             db.session.rollback()
             logger.error(f"DB Error updating movie {movie_id}: {e}")
             return None
         except Exception as e:
+            # Catch other potential errors (e.g., during relationship processing)
             db.session.rollback()
-            logger.error(f"Error processing relationships for update movie {movie_id}: {e}")
+            logger.error(f"General Error updating movie {movie_id}: {e}")
             return None
 
     def delete_movie(self, movie_id: int):
@@ -269,7 +269,10 @@ class SQLiteDataManager(DataManagerInterface):
         try:
             movie = self._get(Movie, id=movie_id)
             if movie:
-                db.session.delete(movie) # Deletes related OMDB data via cascade
+                # Handle related OMDB data if needed (cascade should handle it)
+                # Handle UserFavorite manually if cascade is not set or fails
+                # UserFavorite.query.filter_by(movie_id=movie_id).delete()
+                db.session.delete(movie)
                 db.session.commit()
                 return True
             logger.warning(f"Delete failed: Movie with ID {movie_id} not found.")
@@ -279,104 +282,139 @@ class SQLiteDataManager(DataManagerInterface):
             logger.error(f"DB Error deleting movie {movie_id}: {e}")
             return False
 
-    # --- User Favorite Methods ---
+    # --- Favorite/Interaction Methods ---
 
-    def upsert_favorite(self, user_id: int, movie_id: int, watched: Optional[bool] = None, comment: Optional[str] = None, rating: Optional[float] = None, watchlist: Optional[bool] = None):
-        """Add or update a user's favorite entry for a movie."""
+    def upsert_favorite(self, user_id: int, movie_id: int, 
+                        watched: Optional[bool] = None, 
+                        comment: Optional[str] = None, 
+                        rating: Optional[float] = None, 
+                        watchlist: Optional[bool] = None,
+                        favorite: Optional[bool] = None): # Add favorite parameter
+        """Add or update a user's favorite/interaction entry for a movie."""
         try:
-            fav = self._get(UserFavorite, user_id=user_id, movie_id=movie_id)
+            fav = UserFavorite.query.get((user_id, movie_id))
             if not fav:
-                # Create new favorite if it doesn't exist
+                # Create new entry if it doesn't exist
                 fav = UserFavorite(user_id=user_id, movie_id=movie_id)
-                # Set initial values if provided during creation
-                if watched is not None: fav.watched = watched
-                if comment is not None: fav.comment = comment
-                if rating is not None: fav.rating = rating
-                if watchlist is not None: fav.watchlist = watchlist
                 db.session.add(fav)
+                # Set initial values explicitly, respecting defaults in model if None is passed
+                fav.watched = watched if watched is not None else False
+                fav.watchlist = watchlist if watchlist is not None else False
+                fav.favorite = favorite if favorite is not None else False # Set initial favorite
+                fav.rating = rating
+                fav.comment = comment
             else:
-                # Update fields only if they are explicitly passed (not None)
-                if watched is not None:
-                    fav.watched = watched
-                if comment is not None: # Allows clearing the comment by passing ""
-                    fav.comment = comment
-                if rating is not None:
-                    # Add validation if needed
-                    fav.rating = rating
-                if watchlist is not None:
-                    fav.watchlist = watchlist
-                
+                # Update existing entry only if values are provided
+                if watched is not None: fav.watched = watched
+                if watchlist is not None: fav.watchlist = watchlist
+                if favorite is not None: fav.favorite = favorite # Update favorite status
+                if rating is not None: fav.rating = rating
+                 # Allow clearing comment by passing empty string, but not None
+                if comment is not None: fav.comment = comment
+                # Set watched=True if user rates or comments? Common pattern.
+                # if rating is not None or (comment is not None and comment.strip() != ''):
+                #    fav.watched = True 
+
             db.session.commit()
-            # Return the updated/created favorite object's dict representation
-            return fav.to_dict() 
+            return True # Indicate success
         except SQLAlchemyError as e:
             db.session.rollback()
             logger.error(f"DB Error upserting favorite for user {user_id}, movie {movie_id}: {e}")
-            return None # Indicate error
-        except Exception as e: # Catch other potential errors
+            return False
+        except Exception as e: # Catch potential non-DB errors
             db.session.rollback()
-            logger.error(f"Error upserting favorite for user {user_id}, movie {movie_id}: {e}")
-            return None # Indicate error
-            
+            logger.error(f"General error upserting favorite for user {user_id}, movie {movie_id}: {e}")
+            return False
+
+    def toggle_user_favorite_attribute(self, user_id: int, movie_id: int, attribute: str):
+        """Toggles a boolean attribute (watched, watchlist, favorite) for a UserFavorite entry."""
+        allowed_attributes = ['watched', 'watchlist', 'favorite']
+        if attribute not in allowed_attributes:
+            logger.error(f"Invalid attribute '{attribute}' for toggling.")
+            return {'error': f"Invalid attribute '{attribute}'"}
+
+        try:
+            fav = UserFavorite.query.get((user_id, movie_id))
+            current_value = False
+            if not fav:
+                fav = UserFavorite(user_id=user_id, movie_id=movie_id)
+                db.session.add(fav)
+                # Set default values for other fields if creating new
+                fav.watched = False
+                fav.watchlist = False
+                fav.favorite = False
+                # Set the target attribute to True since it's being toggled from non-existence
+                setattr(fav, attribute, True)
+                current_value = False # Effective previous value was false
+            else:
+                current_value = getattr(fav, attribute, False)
+                setattr(fav, attribute, not current_value)
+
+            # Optional: Set watched=True if adding to watchlist or favorite?
+            # if attribute in ['watchlist', 'favorite'] and getattr(fav, attribute):
+            #     fav.watched = True # Or maybe only if rating/comment?
+
+            db.session.commit()
+            return {'success': True, 'new_state': not current_value} # Return new state
+
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            logger.error(f"DB Error toggling '{attribute}' for user {user_id}, movie {movie_id}: {e}")
+            return {'error': 'Database error during toggle'}
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"General error toggling '{attribute}' for user {user_id}, movie {movie_id}: {e}")
+            return {'error': 'An error occurred during toggle'}
+
     def add_favorite(self, user_id: int, movie_id: int, watched: Optional[bool] = None, comment: Optional[str] = None, rating: Optional[float] = None, watchlist: Optional[bool] = None):
-        """Alias for upsert_favorite to fulfill the interface requirement."""
-        result = self.upsert_favorite(user_id, movie_id, watched, comment, rating, watchlist)
-        return result is not None # Return True on success, False on failure
+        """DEPRECATED: Use upsert_favorite or toggle_user_favorite_attribute instead."""
+        # This method is redundant with upsert_favorite. Keep it for compatibility or remove?
+        # For now, just call upsert_favorite. Add 'favorite=True' if this specifically means marking as fav.
+        logger.warning("Deprecated: add_favorite called, use upsert_favorite or toggle_user_favorite_attribute")
+        return self.upsert_favorite(user_id, movie_id, watched=watched, comment=comment, rating=rating, watchlist=watchlist) # Maybe add favorite=True?
 
     def remove_favorite(self, user_id: int, movie_id: int):
-        """Remove a movie from a user's favorites."""
+        """Remove a user's favorite/interaction entry for a movie."""
         try:
-            fav = self._get(UserFavorite, user_id=user_id, movie_id=movie_id)
+            fav = UserFavorite.query.get((user_id, movie_id))
             if fav:
                 db.session.delete(fav)
                 db.session.commit()
                 return True
-            logger.warning(f"Remove favorite failed: Entry not found for user {user_id}, movie {movie_id}.")
-            return False
+            return False # Return False if not found
         except SQLAlchemyError as e:
             db.session.rollback()
             logger.error(f"DB Error removing favorite for user {user_id}, movie {movie_id}: {e}")
             return False
 
     def get_user_favorites(self, user_id):
-        """Get all favorite entries for a user."""
+        """Get all favorite/interaction entries for a user."""
+        # This is often handled by get_user_data which eager loads. 
+        # If needed standalone:
         try:
-            # Eager load movie and OMDB data for efficiency
-            favorites = UserFavorite.query.options(
-                joinedload(UserFavorite.movie).joinedload(Movie.omdb_data)
-            ).filter_by(user_id=user_id).all()
-            
-            result = []
-            for favorite in favorites:
-                # Start with the movie's dictionary representation
-                movie_dict = favorite.movie.to_dict() if favorite.movie else {}
-                # Update with favorite-specific details
-                movie_dict.update({
-                    'user_id': favorite.user_id, # Keep user_id for context
-                    'watched': favorite.watched,
-                    'comment': favorite.comment,
-                    'rating': favorite.rating, # User's rating for this movie
-                    'watchlist': favorite.watchlist,
-                    # 'created_at': favorite.created_at.isoformat() if favorite.created_at else None # If timestamp existed
-                })
-                result.append(movie_dict)
-            return result
-        except Exception as e:
-            logger_instance = current_app.logger if current_app else logger
-            logger_instance.error(f"Error getting user favorites for user {user_id}: {str(e)}")
+            favs = UserFavorite.query.filter_by(user_id=user_id).options(
+                joinedload(UserFavorite.movie).joinedload(Movie.omdb_data) # Load movie+omdb
+            ).all()
+            return [f.to_dict() for f in favs]
+        except SQLAlchemyError as e:
+            logger.error(f"DB Error getting favorites for user {user_id}: {e}")
             return []
 
     def get_user_favorite(self, user_id: int, movie_id: int):
-         """Get a specific favorite entry for a user and movie.""" 
-         fav = self._get(UserFavorite, user_id=user_id, movie_id=movie_id)
-         return fav.to_dict() if fav else None
-            
-    # --- Relationship Getters ---
+        """Get a specific favorite/interaction entry."""
+        try:
+            fav = UserFavorite.query.get((user_id, movie_id))
+            return fav.to_dict() if fav else None # to_dict() now includes 'favorite'
+        except SQLAlchemyError as e:
+            logger.error(f"DB Error getting favorite for user {user_id}, movie {movie_id}: {e}")
+            return None
+
+    # --- Query Methods ---
 
     def get_movie_platforms(self, movie_id: int):
         """Get streaming platforms for a movie."""
         try:
-            movie = Movie.query.options(subqueryload(Movie.streaming_platforms)).get(movie_id)
+            movie = Movie.query.options(joinedload(Movie.streaming_platforms)).get(movie_id)
             return [p.to_dict(include_relationships=False) for p in movie.streaming_platforms] if movie else []
         except SQLAlchemyError as e:
             logger.error(f"DB Error getting platforms for movie {movie_id}: {e}")
@@ -385,186 +423,268 @@ class SQLiteDataManager(DataManagerInterface):
     def get_movie_categories(self, movie_id: int):
         """Get categories for a movie."""
         try:
-            movie = Movie.query.options(subqueryload(Movie.categories)).get(movie_id)
+            movie = Movie.query.options(joinedload(Movie.categories)).get(movie_id)
             return [c.to_dict(include_relationships=False) for c in movie.categories] if movie else []
         except SQLAlchemyError as e:
             logger.error(f"DB Error getting categories for movie {movie_id}: {e}")
             return []
-            
-    # --- Category/Platform Specific Getters ---
 
     def get_movies_by_category(self, category_id: int):
-        """Get all movies belonging to a specific category."""
+        """Get movies belonging to a specific category."""
         try:
-            # Load category with its movies, and their OMDB data
-            category = Category.query.options(
-                subqueryload(Category.movies_m2m).joinedload(Movie.omdb_data) # Use the M2M relationship
-            ).get(category_id)
-            return [m.to_dict() for m in category.movies_m2m] if category else []
+            # Find movies linked via the association table or the direct foreign key
+            category = Category.query.get(category_id)
+            if not category: return []
+            
+            movies = Movie.query.filter(
+                (Movie.categories.any(id=category_id)) | (Movie.category_id == category_id)
+            ).options(joinedload(Movie.omdb_data)).all() # Fetch OMDB data too
+            
+            return [m.to_dict() for m in movies]
         except SQLAlchemyError as e:
             logger.error(f"DB Error getting movies for category {category_id}: {e}")
             return []
 
     def get_all_categories(self):
         """Get all categories."""
-        # Consider if movie data is needed here; currently fetches only category info
-        categories = self._all(Category)
-        return [c.to_dict(include_relationships=False) for c in categories] # Avoid loading all movies
+        cats = self._all(Category)
+        return [c.to_dict(include_relationships=False) for c in cats]
 
     def get_all_platforms(self):
-        """Get all streaming platforms."""
+        """Get all platforms."""
         platforms = self._all(StreamingPlatform)
         return [p.to_dict(include_relationships=False) for p in platforms]
 
     def get_movies_by_platform(self, platform_id: int):
-        """Get all movies available on a specific platform."""
+        """Get movies available on a specific platform."""
         try:
-            platform = StreamingPlatform.query.options(
-                subqueryload(StreamingPlatform.movies).joinedload(Movie.omdb_data)
-            ).get(platform_id)
-            return [m.to_dict() for m in platform.movies] if platform else []
+            platform = StreamingPlatform.query.get(platform_id)
+            if not platform: return []
+            # Query movies linked via association table
+            movies = Movie.query.filter(Movie.streaming_platforms.any(id=platform_id)).options(joinedload(Movie.omdb_data)).all()
+            return [m.to_dict() for m in movies]
         except SQLAlchemyError as e:
             logger.error(f"DB Error getting movies for platform {platform_id}: {e}")
             return []
-            
+
     def get_all_categories_with_movies(self):
-        """Get all categories with their associated movies, loading OMDB data for movies."""
+        """Get all categories, each with a list of associated movies (dictionaries)."""
         try:
-            # Eager load movies and their OMDB data using joinedload on the m2m relationship
+            # Eager load movies and their OMDB data for each category
             categories = Category.query.options(
-                subqueryload(Category.movies_m2m).joinedload(Movie.omdb_data) 
+                subqueryload(Category.movies_m2m).joinedload(Movie.omdb_data), # For M2M relationship
+                subqueryload(Category.movies).joinedload(Movie.omdb_data) # For FK relationship
             ).all()
-            return [c.to_dict(include_relationships=True) for c in categories]
+            
+            results = []
+            for cat in categories:
+                cat_dict = cat.to_dict(include_relationships=False)
+                # Combine movies from both relationships, avoid duplicates
+                all_cat_movies = {m.id: m for m in cat.movies_m2m}
+                all_cat_movies.update({m.id: m for m in cat.movies})
+                cat_dict['movies'] = [m.to_dict() for m in all_cat_movies.values()]
+                results.append(cat_dict)
+            return results
         except SQLAlchemyError as e:
-            logger.error(f"DB Error getting all categories with movies: {e}")
-            return []
-        except Exception as e:
-            logger.error(f"Error processing categories with movies: {e}")
+            logger.error(f"DB Error getting categories with movies: {e}")
             return []
 
-    # --- List Generation Methods (for main page) ---
+    # --- Aggregation/Ranking Methods ---
 
     def get_top_rated_movies(self, limit=10, offset=0):
-        """Get top rated movies based on average user rating."""
+        """Get movies with the highest average rating from UserFavorite."""
         try:
-            # Calculate average rating from UserFavorite table
-            movies = Movie.query.options(
-                joinedload(Movie.omdb_data),
-                # subqueryload(Movie.streaming_platforms), # Load only if needed
-                # subqueryload(Movie.categories) # Load only if needed
-            ).join(UserFavorite).group_by(Movie.id).order_by(
-                db.func.avg(UserFavorite.rating).desc().nullslast()
-            ).limit(limit).offset(offset).all()
-            return [movie.to_dict() for movie in movies]
-        except Exception as e:
-            logger.error(f"Error getting top rated movies: {e}")
+            # Calculate average rating from UserFavorite table, filtering out non-rated entries
+            avg_ratings = db.session.query(
+                UserFavorite.movie_id,
+                func.avg(UserFavorite.rating).label('average_rating')
+            ).filter(UserFavorite.rating.isnot(None)) \
+             .group_by(UserFavorite.movie_id) \
+             .order_by(func.avg(UserFavorite.rating).desc()) \
+             .limit(limit).offset(offset) \
+             .subquery()
+
+            # Join with Movie table to get movie details
+            top_movies_query = db.session.query(Movie, avg_ratings.c.average_rating) \
+                .join(avg_ratings, Movie.id == avg_ratings.c.movie_id) \
+                .options(joinedload(Movie.omdb_data)) # Load OMDB data
+
+            top_movies_results = top_movies_query.all()
+
+            # Convert to list of dictionaries, adding average rating
+            results = []
+            for movie, avg_rating in top_movies_results:
+                movie_dict = movie.to_dict()
+                movie_dict['average_rating'] = round(avg_rating, 2) if avg_rating else None
+                results.append(movie_dict)
+                
+            return results
+        except SQLAlchemyError as e:
+            logger.error(f"DB Error getting top rated movies: {e}")
             return []
 
     def get_recent_commented_movies(self, limit=6, offset=0):
-        """Get recent comments along with movie and user info, ensuring diverse user representation."""
-        results = []
+        """Get movies with the most recent comments from UserFavorite."""
         try:
-            # First, get unique users who have commented
-            user_subquery = db.session.query(
-                UserFavorite.user_id,
-                func.max(UserFavorite.created_at).label('latest_comment')
-            ).filter(
-                UserFavorite.comment.isnot(None)
-            ).group_by(
-                UserFavorite.user_id
-            ).subquery()
+            # Find the latest comment timestamp for each movie that has comments
+            latest_comment_subquery = db.session.query(
+                UserFavorite.movie_id,
+                func.max(UserFavorite.created_at).label('latest_comment_time') # Assuming created_at exists now
+            ).filter(UserFavorite.comment.isnot(None), UserFavorite.comment != '') \
+             .group_by(UserFavorite.movie_id) \
+             .subquery()
 
-            # Then get the most recent comment for each user
-            favorites_query = UserFavorite.query.options(
-                joinedload(UserFavorite.movie).joinedload(Movie.omdb_data),
-                joinedload(UserFavorite.user).joinedload(User.avatar)
-            ).join(
-                user_subquery,
-                and_(
-                    UserFavorite.user_id == user_subquery.c.user_id,
-                    UserFavorite.created_at == user_subquery.c.latest_comment
-                )
-            ).order_by(
-                user_subquery.c.latest_comment.desc()
-            )
+            # Get UserFavorite entries matching the latest comment time for each movie
+            # This handles cases where multiple comments might have the exact same latest timestamp (unlikely but possible)
+            recent_comments_query = db.session.query(UserFavorite) \
+                .join(latest_comment_subquery, and_(
+                    UserFavorite.movie_id == latest_comment_subquery.c.movie_id,
+                    UserFavorite.created_at == latest_comment_subquery.c.latest_comment_time # Assuming created_at exists
+                )) \
+                .options(
+                    joinedload(UserFavorite.movie).joinedload(Movie.omdb_data), # Load movie->omdb
+                    joinedload(UserFavorite.user).joinedload(User.avatar) # Load user->avatar
+                ) \
+                .order_by(latest_comment_subquery.c.latest_comment_time.desc()) \
+                .limit(limit).offset(offset)
 
-            favorites = favorites_query.limit(limit).offset(offset).all()
+            recent_comments = recent_comments_query.all()
 
-            for fav in favorites:
-                if not fav.movie or not fav.user:  # Skip if essential data is missing
-                    continue 
-                    
-                movie_dict = fav.movie.to_dict()  # Get full movie dict
-                user_name = fav.user.name
-                # Handle potential missing avatar
-                profile_avatar_url = fav.user.avatar.profile_image_url if fav.user.avatar else Avatar().profile_image_url
-                hero_avatar_url = fav.user.avatar.hero_image_url if fav.user.avatar else Avatar().hero_image_url
+            # Prepare the result in the format expected by the template
+            results = []
+            for entry in recent_comments:
+                if entry.movie and entry.user: # Ensure movie and user data are loaded
+                    movie_dict = entry.movie.to_dict() # Get base movie data
+                    # Add comment-specific info
+                    movie_dict['comment'] = entry.comment 
+                    movie_dict['comment_user_name'] = entry.user.name
+                    movie_dict['comment_user_id'] = entry.user.id
+                    movie_dict['comment_user_avatar_url'] = entry.user.avatar.profile_image_url if entry.user.avatar else Avatar().profile_image_url
+                    # Add the timestamp if needed
+                    # movie_dict['comment_created_at'] = entry.created_at.isoformat() if entry.created_at else None
+                    results.append(movie_dict)
+            return results
 
-                results.append({
-                    'movie': movie_dict,
-                    'comment_text': fav.comment,
-                    'comment_user_name': user_name,
-                    'comment_user_avatar_url': profile_avatar_url,
-                    'comment_user_hero_avatar_url': hero_avatar_url
-                })
-
+        except AttributeError:
+             # Fallback if 'created_at' doesn't exist on UserFavorite
+             logger.warning("UserFavorite model missing 'created_at'. Fetching recent comments without sorting by time.")
+             # Simpler fallback: Get any 6 comments, ordered perhaps by user/movie ID
+             recent_comments = UserFavorite.query.filter(
+                   UserFavorite.comment.isnot(None), UserFavorite.comment != ''
+               ).options(
+                   joinedload(UserFavorite.movie).joinedload(Movie.omdb_data),
+                   joinedload(UserFavorite.user).joinedload(User.avatar)
+               ).order_by(UserFavorite.user_id.desc(), UserFavorite.movie_id.desc()) \
+                .limit(limit).offset(offset).all()
+             # Prepare results as above...
+             results = []
+             for entry in recent_comments:
+                 # ... (same result preparation as in the 'try' block) ...
+                  if entry.movie and entry.user:
+                      movie_dict = entry.movie.to_dict()
+                      movie_dict['comment'] = entry.comment
+                      movie_dict['comment_user_name'] = entry.user.name
+                      movie_dict['comment_user_id'] = entry.user.id
+                      movie_dict['comment_user_avatar_url'] = entry.user.avatar.profile_image_url if entry.user.avatar else Avatar().profile_image_url
+                      results.append(movie_dict)
+             return results
+            
         except SQLAlchemyError as e:
             logger.error(f"DB Error getting recent commented movies: {e}")
-        except Exception as e:
-            logger.error(f"Error processing recent commented movies: {e}")
-            
-        return results
-            
+            return []
+
     def get_popular_movies(self, limit=10, offset=0):
-        """Get popular movies based on number of times they appear in favorites."""
+        """Get movies based on the number of interactions (watched/watchlist/rated/favorited)."""
         try:
-            # Count favorites per movie
-            movies = Movie.query.options(
-                joinedload(Movie.omdb_data)
-            ).join(UserFavorite).group_by(Movie.id).order_by(
-                db.func.count(UserFavorite.movie_id).desc().nullslast()
-            ).limit(limit).offset(offset).all()
-            return [movie.to_dict() for movie in movies]
-        except Exception as e:
-            logger.error(f"Error getting popular movies: {e}")
+            # Count interactions per movie_id
+            interaction_counts = db.session.query(
+                UserFavorite.movie_id,
+                func.count(UserFavorite.user_id).label('interaction_count')
+            ).group_by(UserFavorite.movie_id) \
+             .order_by(func.count(UserFavorite.user_id).desc()) \
+             .limit(limit).offset(offset) \
+             .subquery()
+
+            # Join with Movie to get details
+            popular_movies_query = db.session.query(Movie, interaction_counts.c.interaction_count) \
+                .join(interaction_counts, Movie.id == interaction_counts.c.movie_id) \
+                .options(joinedload(Movie.omdb_data))
+
+            popular_movies_results = popular_movies_query.all()
+
+            results = []
+            for movie, count in popular_movies_results:
+                movie_dict = movie.to_dict()
+                movie_dict['interaction_count'] = count
+                results.append(movie_dict)
+            
+            return results
+        except SQLAlchemyError as e:
+            logger.error(f"DB Error getting popular movies: {e}")
+            return []
+
+    def get_most_loved_movies(self, limit=10, offset=0):
+        """Get movies ranked by the number of times they were marked as favorite."""
+        try:
+            # Count favorite=True entries per movie_id
+            favorite_counts = db.session.query(
+                UserFavorite.movie_id,
+                func.count(UserFavorite.user_id).label('favorite_count')
+            ).filter(UserFavorite.favorite == True) \
+             .group_by(UserFavorite.movie_id) \
+             .order_by(func.count(UserFavorite.user_id).desc()) \
+             .limit(limit).offset(offset) \
+             .subquery()
+
+            # Join with Movie to get details
+            loved_movies_query = db.session.query(Movie, favorite_counts.c.favorite_count) \
+                .join(favorite_counts, Movie.id == favorite_counts.c.movie_id) \
+                .options(joinedload(Movie.omdb_data))
+
+            loved_movies_results = loved_movies_query.all()
+
+            results = []
+            for movie, count in loved_movies_results:
+                movie_dict = movie.to_dict()
+                movie_dict['favorite_count'] = count
+                results.append(movie_dict)
+            
+            return results
+        except SQLAlchemyError as e:
+            logger.error(f"DB Error getting most loved movies: {e}", exc_info=True)
             return []
 
     def get_friends_favorites(self, user_id, limit=10, offset=0):
-        """Get favorite movies of user's friends (DISABLED)."""
-        # This functionality requires the friends relationship which was removed.
-        logger.warning(f"Attempted to get friends favorites for user {user_id}, but this feature is disabled.")
+        """DEPRECATED: Friends functionality removed."""
+        logger.warning("get_friends_favorites called, but friends feature is removed.")
         return []
-        # Original implementation commented out
 
     def get_new_releases(self, limit=10, offset=0):
-        """Get newest movies based on year."""
+        """Get movies released recently based on OMDB 'Released' date."""
+        # Note: OMDB 'Released' is a string, requires careful parsing or storing as date
+        # This is a basic implementation assuming 'Released' can be somewhat sorted lexically (YYYY-MM-DD ideally)
+        # or relies on Movie.year primarily. A proper date conversion/storage is recommended.
         try:
-            movies = Movie.query.options(joinedload(Movie.omdb_data)).order_by(
-                Movie.year.desc().nullslast(), Movie.id.desc() # Secondary sort for consistency
-                ).limit(limit).offset(offset).all()
-            return [movie.to_dict() for movie in movies]
-        except Exception as e:
-            logger.error(f"Error getting new releases: {e}")
-            return []
+             # Try sorting by MovieOMDB.released if it's reasonably formatted, fallback to Movie.year
+             # This might be slow without an index on MovieOMDB.released
+             # A dedicated 'release_date' column in Movie table would be better.
             
-    # --- Deprecated/Unused Methods? ---
+             # Simple approach: Order by year, then maybe title?
+            new_movies = Movie.query.options(joinedload(Movie.omdb_data)) \
+                                   .order_by(Movie.year.desc(), Movie.name.asc()) \
+                                   .limit(limit).offset(offset).all()
+                                   
+            # Alternative: Try sorting by OMDB released string (might not be accurate)
+            # new_movies = Movie.query.join(MovieOMDB).options(joinedload(Movie.omdb_data)) \
+            #                        .order_by(MovieOMDB.released.desc()) \
+            #                        .limit(limit).offset(offset).all()
 
-    # add_rating seems redundant if rating is handled via upsert_favorite
-    # def add_rating(self, user_id: int, movie_id: int, rating: float, comment: Optional[str] = None):
-    #    ...
+            return [m.to_dict() for m in new_movies]
+        except SQLAlchemyError as e:
+            logger.error(f"DB Error getting new releases: {e}")
+            return []
 
-    # get_movie_ratings might be redundant if ratings are fetched via get_user_data or get_movie_data?
-    # def get_movie_ratings(self, movie_id):
-    #    ...
-    
-    # get_movie_average_rating could be useful but can be calculated from UserFavorite
-    # def get_movie_average_rating(self, movie_id):
-    #     ...
-
-    # add_favorite is just an alias for upsert_favorite
-    # def add_favorite(...)
-
-    # add_category and add_platform might be used by an admin interface or seeding script?
+    # --- Category/Platform Management (Optional, depends on UI) ---
     def add_category(self, category_data):
         """Add a new category."""
         try:
@@ -572,10 +692,9 @@ class SQLiteDataManager(DataManagerInterface):
             db.session.add(category)
             db.session.commit()
             return category.to_dict(include_relationships=False)
-        except Exception as e:
+        except SQLAlchemyError as e:
             db.session.rollback()
-            logger_instance = current_app.logger if current_app else logger
-            logger_instance.error(f"Error adding category {category_data.get('name')}: {str(e)}")
+            logger.error(f"DB Error adding category: {e}")
             return None
 
     def add_platform(self, platform_data):
@@ -585,12 +704,7 @@ class SQLiteDataManager(DataManagerInterface):
             db.session.add(platform)
             db.session.commit()
             return platform.to_dict(include_relationships=False)
-        except Exception as e:
+        except SQLAlchemyError as e:
             db.session.rollback()
-            logger_instance = current_app.logger if current_app else logger
-            logger_instance.error(f"Error adding platform {platform_data.get('name')}: {str(e)}")
+            logger.error(f"DB Error adding platform: {e}")
             return None
-
-    # This to_dict method belongs to the Movie class in interface.py, not the manager
-    # def to_dict(self):
-    #     ...

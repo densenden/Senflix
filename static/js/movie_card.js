@@ -22,17 +22,25 @@
         });
     }
     function updateButtonState(movieId, action, isActive) {
-        document.querySelectorAll(`.${action}-btn[data-movie-id="${movieId}"]`).forEach(btn => {
+        document.querySelectorAll(`.action-btn[data-movie-id="${movieId}"][data-action="${action}"]`).forEach(btn => {
             btn.classList.toggle('active', isActive);
+            
+            const tooltipSpan = btn.querySelector('.tooltip');
+            let tooltipText = '';
+
             if (action === 'watchlist') {
-                btn.title = isActive ? 'Remove from Watchlist' : 'Add to Watchlist';
-                btn.querySelector('.tooltip').textContent = isActive ? 'Remove from Watchlist' : 'Add to Watchlist';
+                tooltipText = isActive ? 'Remove from Watchlist' : 'Add to Watchlist';
             } else if (action === 'watched') {
-                btn.title = isActive ? 'Mark as Unwatched' : 'Mark as Watched';
-                btn.querySelector('.tooltip').textContent = isActive ? 'Mark as Unwatched' : 'Mark as Watched';
+                tooltipText = isActive ? 'Mark as Unwatched' : 'Mark as Watched'; 
+            } else if (action === 'favorite') {
+                tooltipText = isActive ? 'Remove from Favorites' : 'Add to Favorites';
             } else if (action === 'rate') {
-                btn.title = isActive ? 'Update Rating' : 'Rate Movie';
-                btn.querySelector('.tooltip').textContent = isActive ? 'Update Rating' : 'Rate Movie';
+                tooltipText = isActive ? 'Update Rating' : 'Rate Movie';
+            }
+
+            btn.title = tooltipText; 
+            if (tooltipSpan) {
+                tooltipSpan.textContent = tooltipText;
             }
         });
     }
@@ -41,33 +49,76 @@
         const action = button.dataset.action;
         if (!movieId || !action) return;
         if (button.classList.contains('processing')) return;
+        
         button.classList.add('processing');
+        const wasActive = button.classList.contains('active'); 
+
         try {
-            let endpoint, method = 'POST';
-            if (action === 'watchlist') endpoint = `/toggle_watchlist/${movieId}`;
-            else if (action === 'watched') endpoint = `/toggle_watched/${movieId}`;
-            else if (action === 'rate') {
-                window.showRatingModal && window.showRatingModal(movieId);
-                button.classList.remove('processing');
-                return;
+            let endpoint = '';
+            let method = 'POST';
+            let toastMessage = '';
+
+            if (action === 'watchlist') {
+                endpoint = `/toggle_watchlist/${movieId}`;
+                toastMessage = 'Watchlist updated successfully!';
+            } else if (action === 'watched') {
+                endpoint = `/toggle_watched/${movieId}`;
+                toastMessage = 'Watched status updated successfully!';
+            } else if (action === 'favorite') {
+                endpoint = `/toggle_favorite/${movieId}`;
+                toastMessage = 'Favorites updated successfully!';
+            } else if (action === 'rate') {
+                if (typeof window.showRatingModal === 'function') {
+                    window.showRatingModal(movieId);
+                } else {
+                    console.error('showRatingModal function is not defined globally.');
+                    alert('Rating feature is currently unavailable.');
+                }
+                button.classList.remove('processing'); 
+                return; 
             } else throw new Error('Invalid action');
+
             const response = await fetch(endpoint, { method });
+            if (!response.ok) {
+                let errorMsg = `Request failed with status ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMsg = errorData.error || errorMsg;
+                } catch (jsonError) {
+                    errorMsg += await response.text(); 
+                }
+                throw new Error(errorMsg);
+            }
+
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to update movie status');
-            const isActive = !button.classList.contains('active');
-            updateButtonState(movieId, action, isActive);
-            showToast((action === 'watchlist' ? 'Watchlist' : action === 'watched' ? 'Watched status' : 'Status') + ' updated successfully!');
+            if (data.error) throw new Error(data.error);
+            
+            const isNowActive = data.new_state !== undefined ? data.new_state : !wasActive;
+            
+            updateButtonState(movieId, action, isNowActive);
+            showToast(toastMessage, 'success');
+        
         } catch (error) {
-            showToast(error.message, 'error');
+            console.error(`Error during ${action} action for movie ${movieId}:`, error);
+            showToast(`Error: ${error.message || 'Could not complete action.'}`, 'error');
         } finally {
-            button.classList.remove('processing');
+            setTimeout(() => button.classList.remove('processing'), 250);
         }
     }
-    document.addEventListener('DOMContentLoaded', bindActionButtons);
-    if (!window.showRatingModal) {
-        window.showRatingModal = function() { alert('Rating modal is not available.'); };
+    document.addEventListener('DOMContentLoaded', function() {
+        bindActionButtons();
+    });
+    if (typeof window.showRatingModal !== 'function') {
+        window.showRatingModal = function(movieId) { 
+            console.warn('showRatingModal stub called for movie:', movieId);
+             alert('Rating modal functionality is not loaded correctly.'); 
+        };
     }
-    if (!window.hideRatingModal) {
-        window.hideRatingModal = function() { /* no-op */ };
+    if (typeof window.hideRatingModal !== 'function') {
+        window.hideRatingModal = function() { 
+            console.warn('hideRatingModal stub called.'); 
+            const modal = document.getElementById('ratingModal');
+            if(modal) modal.classList.add('hidden');
+        };
     }
 })(); 
