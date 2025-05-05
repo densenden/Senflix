@@ -12,6 +12,9 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
 
+# Verbessern des URL-Handlings für Serverless-Umgebungen wie Vercel
+app.config['PREFERRED_URL_SCHEME'] = 'https'
+
 # Database setup
 db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data/senflix.sqlite'))
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
