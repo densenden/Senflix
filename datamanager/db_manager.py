@@ -526,81 +526,46 @@ class SQLiteDataManager(DataManagerInterface):
     def get_recent_commented_movies(self, limit=6, offset=0):
         """Get movies with the most recent comments from UserFavorite."""
         try:
-            # Find the latest comment timestamp for each movie that has comments
-            latest_comment_subquery = db.session.query(
-                UserFavorite.movie_id,
-                func.max(UserFavorite.created_at).label('latest_comment_time') # Assuming created_at exists now
-            ).filter(UserFavorite.comment.isnot(None), UserFavorite.comment != '') \
-             .group_by(UserFavorite.movie_id) \
-             .subquery()
+            # Get UserFavorite entries with comments, ordered by composite key in descending order
+            recent_comments = UserFavorite.query.filter(
+                UserFavorite.comment.isnot(None), 
+                UserFavorite.comment != ''
+            ).options(
+                joinedload(UserFavorite.movie).joinedload(Movie.omdb_data),
+                joinedload(UserFavorite.user).joinedload(User.avatar)
+            ).order_by(
+                UserFavorite.user_id.desc(),
+                UserFavorite.movie_id.desc()
+            )
 
-            # Get UserFavorite entries matching the latest comment time for each movie
-            recent_comments_query = db.session.query(UserFavorite) \
-                .join(latest_comment_subquery, and_(
-                    UserFavorite.movie_id == latest_comment_subquery.c.movie_id,
-                    UserFavorite.created_at == latest_comment_subquery.c.latest_comment_time # Assuming created_at exists
-                )) \
-                .options(
-                    joinedload(UserFavorite.movie).joinedload(Movie.omdb_data), # Load movie->omdb
-                    joinedload(UserFavorite.user).joinedload(User.avatar) # Load user->avatar
-                ) \
-                .order_by(latest_comment_subquery.c.latest_comment_time.desc()) \
-                .limit(limit).offset(offset)
+            if limit is not None:
+                recent_comments = recent_comments.limit(limit)
+            if offset > 0:
+                recent_comments = recent_comments.offset(offset)
 
-            recent_comments = recent_comments_query.all()
+            recent_comments = recent_comments.all()
 
             # Prepare the result in the format expected by the template
             results = []
             for entry in recent_comments:
-                if entry.movie and entry.user: # Ensure movie and user data are loaded
-                    movie_dict = entry.movie.to_dict() # Get base movie data
+                if entry.movie and entry.user:  # Ensure movie and user data are loaded
+                    movie_dict = entry.movie.to_dict()  # Get base movie data
                     # Get avatar URLs safely, providing defaults
                     profile_avatar_url = entry.user.avatar.profile_image_url if entry.user.avatar else Avatar().profile_image_url
-                    hero_avatar_url = entry.user.avatar.hero_image_url if entry.user.avatar else Avatar().hero_image_url # Get hero URL
+                    hero_avatar_url = entry.user.avatar.hero_image_url if entry.user.avatar else Avatar().hero_image_url
 
                     # Add comment-specific info
                     results.append({
-                        'movie': movie_dict, 
-                        'comment_text': entry.comment, 
+                        'movie': movie_dict,
+                        'comment_text': entry.comment,
                         'comment_user_name': entry.user.name,
                         'comment_user_id': entry.user.id,
-                        'comment_user_avatar_url': profile_avatar_url, # Existing profile avatar
-                        'comment_user_hero_avatar_url': hero_avatar_url # Added hero avatar URL
-                        # Add the timestamp if needed
-                        # 'comment_created_at': entry.created_at.isoformat() if entry.created_at else None
+                        'comment_user_avatar_url': profile_avatar_url,
+                        'comment_user_hero_avatar_url': hero_avatar_url,
+                        'composite_id': f"{entry.user_id}-{entry.movie_id}"  # Create a composite ID for sorting
                     })
             return results
 
-        except AttributeError:
-             # Fallback if 'created_at' doesn't exist on UserFavorite
-             logger.warning("UserFavorite model missing 'created_at'. Fetching recent comments without sorting by time.")
-             # Simpler fallback: Get any 6 comments, ordered perhaps by user/movie ID
-             recent_comments = UserFavorite.query.filter(
-                   UserFavorite.comment.isnot(None), UserFavorite.comment != ''
-               ).options(
-                   joinedload(UserFavorite.movie).joinedload(Movie.omdb_data),
-                   joinedload(UserFavorite.user).joinedload(User.avatar)
-               ).order_by(UserFavorite.user_id.desc(), UserFavorite.movie_id.desc()) \
-                .limit(limit).offset(offset).all()
-             # Prepare results as above...
-             results = []
-             for entry in recent_comments:
-                  if entry.movie and entry.user:
-                      movie_dict = entry.movie.to_dict()
-                      # Get avatar URLs safely, providing defaults
-                      profile_avatar_url = entry.user.avatar.profile_image_url if entry.user.avatar else Avatar().profile_image_url
-                      hero_avatar_url = entry.user.avatar.hero_image_url if entry.user.avatar else Avatar().hero_image_url # Get hero URL (also in fallback)
-                      
-                      results.append({
-                          'movie': movie_dict,
-                          'comment_text': entry.comment,
-                          'comment_user_name': entry.user.name,
-                          'comment_user_id': entry.user.id,
-                          'comment_user_avatar_url': profile_avatar_url, # Existing profile avatar
-                          'comment_user_hero_avatar_url': hero_avatar_url # Added hero avatar URL (also in fallback)
-                      })
-             return results
-            
         except SQLAlchemyError as e:
             logger.error(f"DB Error getting recent commented movies: {e}")
             return []
@@ -608,19 +573,28 @@ class SQLiteDataManager(DataManagerInterface):
     def get_popular_movies(self, limit=10, offset=0):
         """Get movies based on the number of interactions (watched/watchlist/rated/favorited)."""
         try:
-            # Count interactions per movie_id
-            interaction_counts = db.session.query(
+            # Base query for interaction counts
+            interaction_query = db.session.query(
                 UserFavorite.movie_id,
                 func.count(UserFavorite.user_id).label('interaction_count')
             ).group_by(UserFavorite.movie_id) \
-             .order_by(func.count(UserFavorite.user_id).desc()) \
-             .limit(limit).offset(offset) \
-             .subquery()
+             .order_by(func.count(UserFavorite.user_id).desc())
+
+            # Apply limit only if it's not None
+            if limit is not None:
+                interaction_query = interaction_query.limit(limit)
+            if offset > 0:
+                interaction_query = interaction_query.offset(offset)
+
+            interaction_counts = interaction_query.subquery()
 
             # Join with Movie to get details
             popular_movies_query = db.session.query(Movie, interaction_counts.c.interaction_count) \
                 .join(interaction_counts, Movie.id == interaction_counts.c.movie_id) \
-                .options(joinedload(Movie.omdb_data))
+                .options(
+                    joinedload(Movie.omdb_data),
+                    joinedload(Movie.favorites)  # Load favorites relationship
+                )
 
             popular_movies_results = popular_movies_query.all()
 
@@ -628,6 +602,7 @@ class SQLiteDataManager(DataManagerInterface):
             for movie, count in popular_movies_results:
                 movie_dict = movie.to_dict()
                 movie_dict['interaction_count'] = count
+                movie_dict['favorites'] = [fav.to_dict() for fav in movie.favorites]  # Include favorites data
                 results.append(movie_dict)
             
             return results

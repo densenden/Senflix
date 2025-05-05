@@ -42,8 +42,7 @@
   {# Main Content Area - Container starts AFTER the hero, with padding-top for nav #}
   <div class="container mx-auto px-4 pt-16"> {# Added pt-16 here #}
     {# --- Top Section: Card and Plot --- #}
-    {# Negative margin pulls this section up slightly over the hero gradient - MAYBE needed again? Test without first. #}
-    <section class="w-full mb-12 relative z-10 mt-[-80px]"> {# Re-added negative margin for overlap, adjust as needed #}
+    <section class="w-full mb-12 relative z-10 mt-[-80px]">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
         {# Movie Card - Aligned Left #}
         <div class="flex justify-start">
@@ -52,9 +51,26 @@
           </div>
         </div>
         {# Plot #}
-        <div class="md:col-span-2 flex flex-col gap-4 pt-4">
-          <h2 class="text-2xl font-bold mb-2">Synopsis</h2>
-          <div class="text-base text-gray-300 max-w-3xl prose prose-invert prose-sm">{{ movie.omdb_data.plot if movie.omdb_data and movie.omdb_data.plot else 'No plot available.' }}</div>
+        <div class="md:col-span-2 flex flex-col h-full">
+          <div class="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-2xl border border-gray-700/50 h-full flex flex-col">
+            <div class="p-8">
+              <h2 class="text-3xl font-bold mb-6 text-white">Synopsis</h2>
+              <div class="text-lg leading-relaxed text-gray-200" style="text-align: left;">
+                <p>{{ movie.omdb_data.plot if movie.omdb_data and movie.omdb_data.plot else 'No plot available.' }}</p>
+              </div>
+            </div>
+            {% if movie.omdb_data and movie.omdb_data.genre %}
+              <div class="mt-auto px-8 py-6 border-t border-gray-700/50 bg-gray-800/30">
+                <div class="flex flex-wrap gap-3">
+                  {% for genre in movie.omdb_data.genre.split(',') %}
+                    <span class="px-4 py-2 bg-[#e50914] text-white rounded-md text-sm font-medium hover:bg-[#f6121d] transition-colors duration-300">
+                      {{ genre.strip() }}
+                    </span>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endif %}
+          </div>
         </div>
       </div>
     </section>
@@ -62,7 +78,7 @@
     {# --- Categories Section --- #}
     {% if movie.categories %}
     <section class="w-full mb-12">
-      <h2 class="text-2xl font-bold mb-4">Categories</h2>
+      <h2 class="text-2xl font-bold mb-6">Categories</h2>
       <div class="flex flex-wrap gap-3">
         {% for category in movie.categories %}
           {% set category_obj = category %}
@@ -126,7 +142,7 @@
             {% if movie.omdb_data.metacritic %}<li><span class="font-medium text-gray-400 w-28 inline-block">Metacritic:</span> {{ movie.omdb_data.metacritic }}</li>{% endif %}
             {% if movie.omdb_data.box_office %}<li><span class="font-medium text-gray-400 w-28 inline-block">Box Office:</span> {{ movie.omdb_data.box_office }}</li>{% endif %}
             {% if movie.omdb_data.production %}<li><span class="font-medium text-gray-400 w-28 inline-block">Production:</span> {{ movie.omdb_data.production }}</li>{% endif %}
-            <li><span class="font-medium text-gray-400 w-28 inline-block">Website:</span> {% if movie.omdb_data.website and movie.omdb_data.website != 'N/A' %}<a href="{{ movie.omdb_data.website }}" class="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">Visit</a>{% else %}N/A{% endif %}</li>
+            <li><strong>Website:</strong> {% if movie.omdb_data.website %}<a href="{{ movie.omdb_data.website }}" class="text-[#e50914] hover:underline" target="_blank" rel="noopener noreferrer">Visit</a>{% else %}N/A{% endif %}</li>
           </ul>
         </div>
       </div>

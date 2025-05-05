@@ -38,7 +38,15 @@
           <div class="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent"></div>
         </div>
         <div class="relative z-10 p-8">
-          <h2 class="text-2xl font-bold mb-4 text-gray-100">Popular</h2>
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-gray-100">Community Blockbusters</h2>
+            <a href="{{ url_for('blockbuster') }}" class="px-4 py-2 bg-[#e50914] hover:bg-[#f6121d] text-white rounded-md transition-colors duration-300 flex items-center gap-2">
+              Show All
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          </div>
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for movie in popular_movies %}
               <div style="overflow: visible;">
@@ -77,7 +85,7 @@
                   <div class="flex-shrink-0">
                     <a href="{{ url_for('user_profile', user_id=user.id) }}" 
                        class="flex flex-col items-center group">
-                      <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-500 group-hover:border-white transition-all duration-300">
+                      <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-[#e50914] group-hover:border-white transition-all duration-300">
                         <img src="{{ url_for('static', filename=user.avatar.profile_image_url) }}" 
                              alt="{{ user.name }}" 
                              class="w-full h-full object-cover">
@@ -116,7 +124,15 @@
           <div class="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent"></div>
         </div>
         <div class="relative z-10 p-8">
-          <h2 class="text-2xl font-bold mb-4 text-gray-100">Top Rated by Community</h2>
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-gray-100">Top Rated by Community</h2>
+            <a href="{{ url_for('top_rated') }}" class="px-4 py-2 bg-[#e50914] hover:bg-[#f6121d] text-white rounded-md transition-colors duration-300 flex items-center gap-2">
+              Show All
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          </div>
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for movie in top_rated %}
               <div style="overflow: visible;">
@@ -138,7 +154,15 @@
           <div class="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent"></div>
         </div>
         <div class="relative z-10 p-8">
-          <h2 class="text-2xl font-bold mb-4 text-gray-100">Community Comments</h2>
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-gray-100">Community Comments</h2>
+            <a href="{{ url_for('community_comments') }}" class="px-4 py-2 bg-[#e50914] hover:bg-[#f6121d] text-white rounded-md transition-colors duration-300 flex items-center gap-2">
+              Show All
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          </div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {% if recent_comments and recent_comments|length > 0 %}
               {% for entry in recent_comments[:6] %}
@@ -164,11 +188,19 @@
         </div>
         {# Content #}
         <div class="relative z-10 p-8">
-          <h2 class="text-3xl font-bold mb-6 text-gray-100">{{ category['name'] }}</h2>
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-3xl font-bold text-gray-100">{{ category['name'] }}</h2>
+            <a href="{{ url_for('category_detail', category_id=category['id']) }}" class="px-4 py-2 bg-[#e50914] hover:bg-[#f6121d] text-white rounded-md transition-colors duration-300 flex items-center gap-2">
+              Show All
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          </div>
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% set category_movies = category.get('movies', []) %}
             {% if category_movies %}
-              {% for movie in category_movies %}
+              {% for movie in category_movies[:10] %}
                 <div style="overflow: visible;">
                   {{ movie_card(movie) }}
                 </div>

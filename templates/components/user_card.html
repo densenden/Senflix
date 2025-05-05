@@ -4,7 +4,7 @@
     <div class="relative">
         <img src="{{ url_for('static', filename=user.avatar.profile_image_url) }}"
              alt="{{ user.name }}"
-             class="user-3d-img w-20 h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full object-cover bg-gradient-to-br from-gray-800 via-gray-900 to-gray-700 border-0 ring-0 group-hover:scale-108 group-hover:shadow-[0_0_0_2px_#e50914] group-hover:border-blue-500 transition-transform duration-300 will-change-transform">
+             class="user-3d-img w-20 h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full object-cover bg-gradient-to-br from-gray-800 via-gray-900 to-gray-700 border-0 ring-0 group-hover:scale-108 group-hover:shadow-[0_0_0_2px_#e50914] group-hover:border-[#e50914] transition-transform duration-300 will-change-transform">
         <div class="absolute inset-0 rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" style="background: none;"></div>
     </div>
     <h3 class="mt-4 mb-2 text-lg md:text-xl font-extrabold text-white drop-shadow-lg text-center">{{ user.name }}</h3>

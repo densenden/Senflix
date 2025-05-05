@@ -450,6 +450,29 @@ def category_detail(category_id):
     
     return render_template('category_detail.html', category=category_data, current_user=current_user)
 
+@app.route('/blockbuster')
+def blockbuster():
+    """Display all blockbuster/popular movies."""
+    # Get all movies without limit
+    popular_movies = data_manager.get_popular_movies(limit=None)
+    # Sort by number of favorites if available
+    popular_movies = sorted(popular_movies, key=lambda x: len(x.get('favorites', [])) if x.get('favorites') else 0, reverse=True)
+    popular_movies = data_manager._add_watched_avatars_to_movies(popular_movies)
+    return render_template('blockbuster.html', movies=popular_movies, current_user=current_user)
+
+@app.route('/top-rated')
+def top_rated():
+    """Display all top rated movies."""
+    top_rated_movies = data_manager.get_top_rated_movies(limit=None)  # No limit here to get all movies
+    top_rated_movies = data_manager._add_watched_avatars_to_movies(top_rated_movies)
+    return render_template('top_rated.html', movies=top_rated_movies, current_user=current_user)
+
+@app.route('/community-comments')
+def community_comments():
+    """Display all community comments."""
+    recent_comments = data_manager.get_recent_commented_movies(limit=None)  # Remove limit to get all comments
+    return render_template('community_comments.html', comments=recent_comments, current_user=current_user)
+
 @app.route('/avatar/<int:avatar_id>')
 def avatar_detail(avatar_id):
     """Display details for a specific avatar."""

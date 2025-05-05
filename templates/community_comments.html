@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% from 'components/navigation.html' import top_nav %}
+{% from 'components/comments_tab.html' import comment_card %}
+
+{% block content %}
+{{ top_nav(current_user=current_user) }}
+
+<div class="min-h-screen bg-black text-white pt-16">
+  {# Hero Section #}
+  <div class="relative h-[40vh] min-h-[300px] w-full flex items-end">
+    <img src="{{ url_for('static', filename='sections/comments.jpg') }}" alt="Community Comments" class="absolute inset-0 w-full h-full object-cover object-bottom opacity-50">
+    <div class="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
+    <div class="relative z-10 container mx-auto px-8 py-12">
+      <h1 class="text-4xl md:text-5xl font-bold mb-4">Community Comments</h1>
+      <p class="text-xl text-gray-300">What our community is saying about movies</p>
+    </div>
+  </div>
+
+  {# Controls Section #}
+  <div class="container mx-auto px-4 py-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div class="flex flex-wrap gap-4 items-center">
+        <select id="sort-by" class="bg-gray-800 text-white rounded-md px-4 py-2 border border-gray-700 hover:bg-gray-700 transition-colors">
+          <option value="latest">Latest First</option>
+          <option value="user">Sort by User</option>
+          <option value="avatar">Sort by Avatar</option>
+        </select>
+        <button id="show-all" class="px-4 py-2 bg-[#e50914] text-white rounded-md hover:bg-[#f6121d] transition-colors">
+          Show All
+        </button>
+      </div>
+      <div class="text-gray-400">
+        <span id="shown-count">0</span>/<span id="total-count">{{ comments|length }}</span> comments
+      </div>
+    </div>
+  </div>
+
+  {# Comments Grid #}
+  <div class="container mx-auto px-4 py-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for comment in comments %}
+        <div class="comment-card bg-gray-900 rounded-lg overflow-hidden hover:bg-gray-800 transition-colors duration-300 relative" 
+             data-rating="{{ comment.movie.rating if comment.movie and comment.movie.rating else 0 }}"
+             data-movie="{{ comment.movie.name if comment.movie else '' }}"
+             data-avatar="{{ comment.comment_user_avatar_url|default('') }}"
+             data-user="{{ comment.comment_user_name|default('') }}"
+             data-id="{{ comment.composite_id }}">
+          {# Hero Image Background #}
+          <div class="absolute inset-0 z-0">
+            <img src="{{ url_for('static', filename=comment.comment_user_hero_avatar_url) }}" 
+                 alt="Background" 
+                 class="w-full h-full object-cover opacity-15">
+            <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/90 to-gray-900/70"></div>
+          </div>
+          
+          {# Content #}
+          <div class="relative z-10 p-6">
+            {# User Info Section #}
+            <div class="flex flex-col items-center mb-4">
+              <a href="{{ url_for('user_profile', user_id=comment.comment_user_id) }}" 
+                 class="block hover:opacity-80 transition-opacity">
+                <img src="{{ url_for('static', filename=comment.comment_user_avatar_url) }}" 
+                     alt="{{ comment.comment_user_name }}" 
+                     class="w-16 h-16 rounded-full object-cover ring-2 ring-[#e50914] ring-offset-2 ring-offset-gray-900">
+              </a>
+              <a href="{{ url_for('user_profile', user_id=comment.comment_user_id) }}" 
+                 class="mt-2 font-semibold text-lg hover:text-[#e50914] transition-colors min-w-[120px] text-center">
+                {{ comment.comment_user_name }}
+              </a>
+            </div>
+
+            {# Comment Text #}
+            <div class="mt-4">
+              <p class="text-white text-2xl font-medium leading-relaxed">{{ comment.comment_text }}</p>
+            </div>
+
+            {# Movie Link #}
+            {% if comment.movie %}
+              <div class="mt-4 text-sm text-center">
+                <a href="{{ url_for('movie_detail', movie_id=comment.movie.id) }}" 
+                   class="text-[#e50914] hover:text-[#f6121d] transition-colors inline-block">
+                  {{ comment.movie.name }}
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% else %}
+        <p class="col-span-full text-center text-gray-400 py-12">No comments found.</p>
+      {% endfor %}
+    </div>
+    
+    {# Load More Button #}
+    <div class="flex justify-center mt-8">
+      <button id="load-more" class="px-6 py-3 bg-gray-800 text-white rounded-md hover:bg-gray-700 transition-colors flex items-center gap-2">
+        <span>Load More</span>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+.comment-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.comment-card > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading {
+  position: relative;
+}
+
+.loading svg {
+  animation: spin 1s linear infinite;
+  transform-origin: center;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const commentsGrid = document.querySelector('.grid');
+  const comments = Array.from(commentsGrid.querySelectorAll('.comment-card'));
+  const showAllBtn = document.getElementById('show-all');
+  const loadMoreBtn = document.getElementById('load-more');
+  const sortSelect = document.getElementById('sort-by');
+  const shownCountEl = document.getElementById('shown-count');
+  const totalCountEl = document.getElementById('total-count');
+  let visibleCount = 12; // Initial count
+  const incrementCount = 12; // Load 12 more each time
+
+  function updateCommentVisibility() {
+    const totalComments = comments.length;
+    comments.forEach((comment, index) => {
+      if (index < visibleCount) {
+        comment.style.display = 'block';
+      } else {
+        comment.style.display = 'none';
+      }
+    });
+    
+    shownCountEl.textContent = Math.min(visibleCount, totalComments);
+    totalCountEl.textContent = totalComments;
+    
+    // Toggle visibility of load more button
+    loadMoreBtn.style.display = visibleCount >= totalComments ? 'none' : 'flex';
+  }
+
+  function sortComments() {
+    const sortBy = sortSelect.value;
+    const sortedComments = [...comments].sort((a, b) => {
+      if (sortBy === 'latest') {
+        // Sort by composite_id in descending order
+        return b.dataset.id.localeCompare(a.dataset.id);
+      } else {
+        const valueA = a.dataset[sortBy].toLowerCase();
+        const valueB = b.dataset[sortBy].toLowerCase();
+        return valueA.localeCompare(valueB);
+      }
+    });
+    
+    // Clear and re-append sorted comments
+    commentsGrid.innerHTML = '';
+    sortedComments.forEach(comment => {
+      commentsGrid.appendChild(comment);
+    });
+    
+    // Reset visibility
+    visibleCount = 12;
+    updateCommentVisibility();
+  }
+
+  // Initial setup
+  updateCommentVisibility();
+
+  // Event listeners
+  showAllBtn.addEventListener('click', () => {
+    visibleCount = comments.length;
+    updateCommentVisibility();
+  });
+
+  loadMoreBtn.addEventListener('click', () => {
+    loadMoreBtn.classList.add('loading');
+    setTimeout(() => {
+      visibleCount = Math.min(visibleCount + incrementCount, comments.length);
+      updateCommentVisibility();
+      loadMoreBtn.classList.remove('loading');
+    }, 300);
+  });
+
+  sortSelect.addEventListener('change', sortComments);
+
+  // Initial sort by latest
+  sortSelect.value = 'latest';
+  sortComments();
+});
+</script>
+{% endblock %} 

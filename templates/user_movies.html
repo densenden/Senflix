@@ -11,11 +11,15 @@
         <img src="{{ url_for('static', filename=hero_img) }}" alt="Avatar Hero" class="absolute inset-0 w-full h-full object-cover opacity-70" style="object-position: center 30%;">
         <div class="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent"></div>
         <div class="relative z-10 px-8 pb-12 flex items-end gap-8 w-full self-end">
-          <a href="{{ url_for('avatar_detail', avatar_id=user['avatar']['id']) }}" class="group">
-            <img src="{{ url_for('static', filename=user['avatar']['profile_image_url'] if user['avatar'] else 'avatars/profile/avatar_' ~ user['avatar']['id'] ~ '.jpg') }}" alt="Avatar" class="w-32 h-32 rounded-full border-4 border-blue-500 shadow-2xl group-hover:border-white transition-colors">
+          <a href="{{ url_for('avatar_detail', avatar_id=user['avatar']['id']) }}" class="group relative">
+            <img src="{{ url_for('static', filename=user['avatar']['profile_image_url'] if user['avatar'] else 'avatars/profile/avatar_' ~ user['avatar']['id'] ~ '.jpg') }}" alt="Avatar" class="w-32 h-32 rounded-full border-4 border-[#e50914] shadow-2xl group-hover:border-white transition-colors">
+            <span class="absolute left-1/2 -translate-x-1/2 -top-10 bg-gray-900/90 text-white px-3 py-1 rounded-lg text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap border border-[#e50914]">To Avatar Page</span>
           </a>
           <div>
             <h1 class="text-5xl font-extrabold text-white drop-shadow-lg mb-2">{{ user['name'] }}'s Movies</h1>
+            <a href="{{ url_for('user_selection') }}" class="inline-flex items-center px-4 py-2 rounded-full bg-[#e50914]/20 hover:bg-[#e50914]/30 border border-[#e50914]/50 hover:border-[#e50914] backdrop-blur-sm transition-all duration-300 group">
+              <span class="text-sm font-medium text-white group-hover:text-white/90">Switch Role</span>
+            </a>
           </div>
         </div>
       </div>
@@ -72,7 +76,7 @@
                   <div>
                     <div class="font-bold text-lg">{{ fav.name }}</div>
                     <div class="text-gray-400 text-sm">{{ fav.year }}</div>
-                    <a href="{{ url_for('add_movie', user_id=user.id) }}" class="text-blue-400 hover:underline text-xs">Add/Edit Movie</a>
+                    <a href="{{ url_for('add_movie', user_id=user.id) }}" class="text-[#e50914] hover:underline text-xs">Add/Edit Movie</a>
                   </div>
                 </div>
                 <div class="mt-2 text-sm">{{ fav.comment }}</div>

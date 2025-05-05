@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "components/movie_card.html" import movie_card %}
+{% from 'components/navigation.html' import top_nav %}
+
+{% block content %}
+{{ top_nav(current_user=current_user) }}
+
+<div class="min-h-screen bg-black text-white pt-16">
+  {# Hero Section #}
+  <div class="relative h-[40vh] min-h-[300px] w-full flex items-end">
+    <img src="{{ url_for('static', filename='sections/popular.jpg') }}" alt="Blockbuster Movies" class="absolute inset-0 w-full h-full object-cover object-bottom opacity-50">
+    <div class="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
+    <div class="relative z-10 container mx-auto px-8 py-12">
+      <h1 class="text-4xl md:text-5xl font-bold mb-4">Community Blockbusters</h1>
+      <p class="text-xl text-gray-300">Most favorited movies by our community</p>
+    </div>
+  </div>
+
+  {# Movies Grid #}
+  <div class="container mx-auto px-4 py-12">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      {% for movie in movies %}
+        <div class="transform hover:scale-105 transition-transform duration-200">
+          {{ movie_card(movie) }}
+          {% if movie.favorites %}
+            <div class="mt-2 text-sm text-gray-400 text-center">
+              {{ movie.favorites|length }} {% if movie.favorites|length == 1 %}favorite{% else %}favorites{% endif %}
+            </div>
+          {% endif %}
+        </div>
+      {% else %}
+        <p class="col-span-full text-center text-gray-400 py-12">No movies found.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %} 
