@@ -535,7 +535,6 @@ class SQLiteDataManager(DataManagerInterface):
              .subquery()
 
             # Get UserFavorite entries matching the latest comment time for each movie
-            # This handles cases where multiple comments might have the exact same latest timestamp (unlikely but possible)
             recent_comments_query = db.session.query(UserFavorite) \
                 .join(latest_comment_subquery, and_(
                     UserFavorite.movie_id == latest_comment_subquery.c.movie_id,
@@ -555,14 +554,21 @@ class SQLiteDataManager(DataManagerInterface):
             for entry in recent_comments:
                 if entry.movie and entry.user: # Ensure movie and user data are loaded
                     movie_dict = entry.movie.to_dict() # Get base movie data
+                    # Get avatar URLs safely, providing defaults
+                    profile_avatar_url = entry.user.avatar.profile_image_url if entry.user.avatar else Avatar().profile_image_url
+                    hero_avatar_url = entry.user.avatar.hero_image_url if entry.user.avatar else Avatar().hero_image_url # Get hero URL
+
                     # Add comment-specific info
-                    movie_dict['comment'] = entry.comment 
-                    movie_dict['comment_user_name'] = entry.user.name
-                    movie_dict['comment_user_id'] = entry.user.id
-                    movie_dict['comment_user_avatar_url'] = entry.user.avatar.profile_image_url if entry.user.avatar else Avatar().profile_image_url
-                    # Add the timestamp if needed
-                    # movie_dict['comment_created_at'] = entry.created_at.isoformat() if entry.created_at else None
-                    results.append(movie_dict)
+                    results.append({
+                        'movie': movie_dict, 
+                        'comment_text': entry.comment, 
+                        'comment_user_name': entry.user.name,
+                        'comment_user_id': entry.user.id,
+                        'comment_user_avatar_url': profile_avatar_url, # Existing profile avatar
+                        'comment_user_hero_avatar_url': hero_avatar_url # Added hero avatar URL
+                        # Add the timestamp if needed
+                        # 'comment_created_at': entry.created_at.isoformat() if entry.created_at else None
+                    })
             return results
 
         except AttributeError:
@@ -579,14 +585,20 @@ class SQLiteDataManager(DataManagerInterface):
              # Prepare results as above...
              results = []
              for entry in recent_comments:
-                 # ... (same result preparation as in the 'try' block) ...
                   if entry.movie and entry.user:
                       movie_dict = entry.movie.to_dict()
-                      movie_dict['comment'] = entry.comment
-                      movie_dict['comment_user_name'] = entry.user.name
-                      movie_dict['comment_user_id'] = entry.user.id
-                      movie_dict['comment_user_avatar_url'] = entry.user.avatar.profile_image_url if entry.user.avatar else Avatar().profile_image_url
-                      results.append(movie_dict)
+                      # Get avatar URLs safely, providing defaults
+                      profile_avatar_url = entry.user.avatar.profile_image_url if entry.user.avatar else Avatar().profile_image_url
+                      hero_avatar_url = entry.user.avatar.hero_image_url if entry.user.avatar else Avatar().hero_image_url # Get hero URL (also in fallback)
+                      
+                      results.append({
+                          'movie': movie_dict,
+                          'comment_text': entry.comment,
+                          'comment_user_name': entry.user.name,
+                          'comment_user_id': entry.user.id,
+                          'comment_user_avatar_url': profile_avatar_url, # Existing profile avatar
+                          'comment_user_hero_avatar_url': hero_avatar_url # Added hero avatar URL (also in fallback)
+                      })
              return results
             
         except SQLAlchemyError as e:

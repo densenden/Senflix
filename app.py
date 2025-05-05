@@ -105,32 +105,53 @@ def movies():
         categories = data_manager.get_all_categories_with_movies()
         platforms = data_manager.get_all_platforms()
         
-        # Add watched avatars to the lists
+        # Apply user status using the helper function
         new_releases = data_manager._add_watched_avatars_to_movies(new_releases)
         popular_movies = data_manager._add_watched_avatars_to_movies(popular_movies)
         top_rated = data_manager._add_watched_avatars_to_movies(top_rated)
-        # Add avatars to movies within categories as well
+        
+        # Add status to movies within categories
         for category in categories:
-            category['movies'] = data_manager._add_watched_avatars_to_movies(category.get('movies', []))
+            movies_with_avatars = data_manager._add_watched_avatars_to_movies(category.get('movies', []))
+            category['movies'] = data_manager._add_watched_avatars_to_movies(movies_with_avatars)
             
-        # Get favorites from users with same avatar
+        # Get REAL favorites (favorite=True) from users with same avatar
         same_avatar_favorites = []
         if current_user.is_authenticated:
-            # Get all users with same avatar
-            same_avatar_users = User.query.filter_by(avatar_id=current_user.avatar_id).filter(User.id != current_user.id).all()
+            same_avatar_users = User.query.filter(
+                User.avatar_id == current_user.avatar_id, 
+                User.id != current_user.id
+            ).all()
             
-            # Get their favorites
+            favorite_movie_ids = set() # Keep track of added movie IDs to avoid duplicates in this section
+            limit_per_section = 10 # Limit the number of movies shown in this section
+
             for user in same_avatar_users:
-                user_favorites = UserFavorite.query.filter_by(user_id=user.id, watched=True).all()
+                if len(same_avatar_favorites) >= limit_per_section:
+                    break # Stop fetching if we reached the limit
+
+                # Fetch entries marked as FAVORITE by this user
+                user_favorites = UserFavorite.query.filter_by(
+                    user_id=user.id, 
+                    favorite=True # Filter by the new favorite flag
+                ).limit(limit_per_section - len(same_avatar_favorites)).all() # Limit query 
+                
                 for fav in user_favorites:
-                    movie = data_manager.get_movie_data(fav.movie_id)
-                    if movie:
-                        same_avatar_favorites.append({
-                            'movie': movie,
-                            'user': user,
-                            'rating': fav.rating,
-                            'comment': fav.comment
-                        })
+                    if fav.movie_id not in favorite_movie_ids:
+                         # Use get_movie_data and apply status for the *current* user viewing the card
+                        movie_data = data_manager.get_movie_data(fav.movie_id)
+                        if movie_data:
+                            # Apply status for the logged-in user to the card
+                            movie_with_status = data_manager._add_watched_avatars_to_movies([movie_data])[0] 
+                            same_avatar_favorites.append({
+                                'movie': movie_with_status, # Use movie with status flags for the viewer
+                                'user': user, # User who favorited it (for potential future use, not shown on card)
+                                'rating': fav.rating, # Rating by the other user (not shown on card)
+                                'comment': fav.comment # Comment by the other user (not shown on card)
+                            })
+                            favorite_movie_ids.add(fav.movie_id)
+                            if len(same_avatar_favorites) >= limit_per_section:
+                                break # Stop inner loop if limit reached
             
     except Exception as e:
         app.logger.error(f"Error loading movie lists for /movies: {str(e)}")
@@ -138,11 +159,16 @@ def movies():
         new_releases, popular_movies, top_rated, recent_comments = [], [], [], []
         same_avatar_favorites, categories, platforms = [], [], []
 
+    # Get most loved movies (based on favorite count)
+    most_loved_movies = []
+    # ... (existing most_loved_movies fetching) ...
+
     return render_template('movies.html',
                          new_releases=new_releases,
                          popular_movies=popular_movies,
                          same_avatar_favorites=same_avatar_favorites,
                          top_rated=top_rated,
+                         most_loved_movies=most_loved_movies, 
                          recent_comments=recent_comments,
                          categories=categories,
                          platforms=platforms)

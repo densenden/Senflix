@@ -20,7 +20,15 @@
 {% endmacro %}
 
 {% macro side_nav() %}
-<aside id="sidebar" class="fixed top-16 left-0 w-64 bg-black/80 backdrop-blur-sm overflow-y-auto transition-transform duration-500 h-[calc(100vh-4rem)] z-40" style="transform: translateX(0); user-select: none;">
+{# Handle zum Öffnen/Schließen der Sidebar #}
+<div id="sidebar-handle" class="fixed top-1/2 left-0 transform -translate-y-1/2 z-50 p-2 bg-red-600/80 hover:bg-red-500 rounded-r-lg cursor-pointer transition-colors duration-300" style="margin-left: 0px;"> {# Adjusted margin-left #}
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+</div>
+
+{# Die Sidebar selbst #}
+<aside id="sidebar" class="fixed top-16 left-0 w-64 bg-black/80 backdrop-blur-sm overflow-y-auto transition-transform duration-500 h-[calc(100vh-4rem)] z-40 sidebar-hidden" style="transform: translateX(-100%); user-select: none;"> {# Initial hidden #}
     <div class="p-4">
         <ul id="sidebar-dynamic-anchors" class="space-y-2 mb-8"></ul>
     </div>

@@ -17,7 +17,7 @@
     <div class="space-y-0">
       
       {# --- Hero Section --- #}
-      <section class="relative h-screen flex items-end snap-section" id="hero">
+      <section class="relative flex items-end snap-section" id="hero" style="height: 30vh;">
         <div class="absolute inset-0">
           <img src="{{ url_for('static', filename='hero.png') }}" alt="Hero background" class="w-full h-full object-cover opacity-60">
           <div class="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
@@ -28,27 +28,6 @@
         </div>
       </section>
 
-      {# --- New Releases Section --- #}
-      <section id="new-releases" class="snap-section h-screen flex flex-col justify-end relative">
-        <div class="absolute inset-0 z-0">
-          <img src="{{ url_for('static', filename='sections/new-releases.jpg') }}" 
-               alt="New Releases Background" 
-               class="w-full h-full object-cover opacity-50">
-          <div class="absolute inset-0 bg-gradient-to-t from-black via-black/90 to-black/70"></div>
-        </div>
-        <div class="relative z-10 p-8">
-          <h2 class="text-2xl font-bold mb-4 text-gray-100">New Releases</h2>
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {% for movie in new_releases %}
-              <div style="overflow: visible;">
-                {{ movie_card(movie) }}
-              </div>
-            {% else %}
-              <p>No movies found.</p>
-            {% endfor %}
-          </div>
-        </div>
-      </section>
 
       {# --- Popular Section --- #}
       <section id="popular" class="snap-section h-screen flex flex-col justify-end relative">
@@ -258,6 +237,24 @@
     opacity: 0.7 !important;
   }
 
+  /* --- Sidebar Toggle Styles --- */
+  #sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+  
+  #main-content.main-content-shifted {
+    margin-left: 16rem; /* Same as sidebar width */
+  }
+
+  #sidebar-handle {
+    transition: margin-left 0.5s ease-in-out; /* Sync with sidebar transition */
+  }
+
+  #sidebar-handle.handle-shifted {
+    margin-left: 16rem; /* Move handle with sidebar */
+  }
+  /* --- End Sidebar Styles --- */
+
   /* Avatar image container */
   .avatar-image-container {
     width: 12px;
@@ -295,4 +292,71 @@
 </style>
 
 {# --- JavaScript --- #}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('main-content');
+    const handle = document.getElementById('sidebar-handle');
+    const sidebarLinks = sidebar.querySelectorAll('a'); // Get all links in the sidebar
+
+    function openSidebar() {
+        sidebar.style.transform = 'translateX(0)';
+        // sidebar.classList.add('sidebar-open'); // Using direct style manipulation for simplicity here
+        mainContent.style.marginLeft = '16rem'; // Shift main content
+        handle.style.marginLeft = '16rem'; // Shift handle
+    }
+
+    function closeSidebar() {
+        sidebar.style.transform = 'translateX(-100%)';
+        // sidebar.classList.remove('sidebar-open');
+        mainContent.style.marginLeft = '0'; // Reset main content margin
+        handle.style.marginLeft = '0'; // Reset handle margin
+    }
+
+    // Toggle sidebar on handle click
+    if (handle && sidebar && mainContent) {
+        handle.addEventListener('click', function() {
+            const isHidden = sidebar.style.transform === 'translateX(-100%)';
+            if (isHidden) {
+                openSidebar();
+            } else {
+                closeSidebar();
+            }
+        });
+    }
+
+    // Close sidebar when a link inside it is clicked
+    sidebarLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            // Don't close immediately if it's just an anchor link for the same page?
+            // For now, always close.
+            closeSidebar();
+        });
+    });
+    
+    // --- Existing JS for dynamic anchors (keep this) --- 
+    const sidebarAnchorList = document.getElementById('sidebar-dynamic-anchors');
+    const sections = document.querySelectorAll('.snap-section[id]'); // Select sections with IDs
+
+    if (sidebarAnchorList) {
+        sidebarAnchorList.innerHTML = ''; // Clear existing items before adding new ones
+        sections.forEach(section => {
+            const sectionId = section.id;
+            const sectionTitle = section.querySelector('h1, h2')?.textContent || sectionId.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()); // Format ID if no title
+            
+            if (sectionId) { // Ensure there is an ID
+                const listItem = document.createElement('li');
+                const link = document.createElement('a');
+                link.href = `#${sectionId}`;
+                link.textContent = sectionTitle;
+                link.className = 'block px-3 py-2 rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition duration-150 ease-in-out sidebar-link'; // Style the links
+                listItem.appendChild(link);
+                sidebarAnchorList.appendChild(listItem);
+            }
+        });
+    }
+    // --- End Existing JS --- 
+
+  });
+</script>
 {% endblock %}
