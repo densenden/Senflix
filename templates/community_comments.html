@@ -39,51 +39,20 @@
   <div class="container mx-auto px-4 py-8">
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {% for comment in comments %}
-        <div class="comment-card bg-gray-900 rounded-lg overflow-hidden hover:bg-gray-800 transition-colors duration-300 relative" 
+        <div class="comment-card"
              data-rating="{{ comment.movie.rating if comment.movie and comment.movie.rating else 0 }}"
              data-movie="{{ comment.movie.name if comment.movie else '' }}"
              data-avatar="{{ comment.comment_user_avatar_url|default('') }}"
              data-user="{{ comment.comment_user_name|default('') }}"
              data-id="{{ comment.composite_id }}">
-          {# Hero Image Background #}
-          <div class="absolute inset-0 z-0">
-            <img src="{{ url_for('static', filename=comment.comment_user_hero_avatar_url) }}" 
-                 alt="Background" 
-                 class="w-full h-full object-cover opacity-15">
-            <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/90 to-gray-900/70"></div>
-          </div>
-          
-          {# Content #}
-          <div class="relative z-10 p-6">
-            {# User Info Section #}
-            <div class="flex flex-col items-center mb-4">
-              <a href="{{ url_for('user_profile', user_id=comment.comment_user_id) }}" 
-                 class="block hover:opacity-80 transition-opacity">
-                <img src="{{ url_for('static', filename=comment.comment_user_avatar_url) }}" 
-                     alt="{{ comment.comment_user_name }}" 
-                     class="w-16 h-16 rounded-full object-cover ring-2 ring-[#e50914] ring-offset-2 ring-offset-gray-900">
-              </a>
-              <a href="{{ url_for('user_profile', user_id=comment.comment_user_id) }}" 
-                 class="mt-2 font-semibold text-lg hover:text-[#e50914] transition-colors min-w-[120px] text-center">
-                {{ comment.comment_user_name }}
-              </a>
-            </div>
-
-            {# Comment Text #}
-            <div class="mt-4">
-              <p class="text-white text-2xl font-medium leading-relaxed">{{ comment.comment_text }}</p>
-            </div>
-
-            {# Movie Link #}
-            {% if comment.movie %}
-              <div class="mt-4 text-sm text-center">
-                <a href="{{ url_for('movie_detail', movie_id=comment.movie.id) }}" 
-                   class="text-[#e50914] hover:text-[#f6121d] transition-colors inline-block">
-                  {{ comment.movie.name }}
-                </a>
-              </div>
-            {% endif %}
-          </div>
+          {{ comment_card({
+            'movie': comment.movie,
+            'comment_text': comment.comment_text,
+            'comment_user_name': comment.comment_user_name,
+            'comment_user_id': comment.comment_user_id,
+            'comment_user_avatar_url': comment.comment_user_avatar_url,
+            'comment_user_hero_avatar_url': comment.comment_user_hero_avatar_url
+          }) }}
         </div>
       {% else %}
         <p class="col-span-full text-center text-gray-400 py-12">No comments found.</p>
@@ -105,14 +74,6 @@
 <style>
 .comment-card {
   height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.comment-card > div {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
 }
 
 @keyframes spin {

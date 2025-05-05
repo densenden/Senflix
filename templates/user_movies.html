@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% import 'components/movie_card.html' as mc %}
 {% from 'components/navigation.html' import top_nav, side_nav %}
+{% from 'components/comments_tab.html' import comment_card %}
+
 {% block content %}
 {{ top_nav(current_user=current_user) }}
 <div class="flex flex-row bg-black min-h-screen w-full">
@@ -64,23 +66,18 @@
         {% if last_comments %}
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {% for fav in last_comments %}
-              <div class="bg-gray-900/90 rounded-xl p-4 shadow-lg flex flex-col gap-2">
-                <div class="flex items-center gap-4">
-                  {% if fav.omdb_data and fav.omdb_data.poster_img %}
-                    <img src="{{ url_for('static', filename='movies/' ~ fav.omdb_data.poster_img) }}" alt="Poster" class="w-16 h-24 object-cover rounded-md border border-gray-700">
-                  {% else %}
-                    <div class="w-16 h-24 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center rounded-md border border-gray-700">
-                      <span class="text-gray-300 text-xs">{{ fav.name[:10] }}{% if fav.name|length > 10 %}...{% endif %}</span>
-                    </div>
-                  {% endif %}
-                  <div>
-                    <div class="font-bold text-lg">{{ fav.name }}</div>
-                    <div class="text-gray-400 text-sm">{{ fav.year }}</div>
-                    <a href="{{ url_for('add_movie', user_id=user.id) }}" class="text-[#e50914] hover:underline text-xs">Add/Edit Movie</a>
-                  </div>
-                </div>
-                <div class="mt-2 text-sm">{{ fav.comment }}</div>
-              </div>
+              {{ comment_card({
+                'movie': {
+                  'id': fav.id,
+                  'name': fav.name,
+                  'year': fav.year
+                },
+                'comment_text': fav.comment,
+                'comment_user_name': user.name,
+                'comment_user_id': user.id,
+                'comment_user_avatar_url': user.avatar.profile_image_url if user.avatar else 'avatars/profile/avatar_' ~ user.avatar_id ~ '.jpg',
+                'comment_user_hero_avatar_url': user.avatar.hero_image_url if user.avatar else 'avatars/hero/avatar_' ~ user.avatar_id ~ '.jpg'
+              }) }}
             {% endfor %}
           </div>
         {% else %}
