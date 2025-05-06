@@ -1,0 +1,21 @@
+{# Avatar category card component for displaying popular categories on avatar detail page #}
+{% macro avatar_category_card(category) %}
+<a href="{{ url_for('category_detail', category_id=category.id) }}" 
+   class="group relative block h-36 rounded-xl overflow-hidden shadow-lg bg-gray-900 hover:shadow-xl transition-all duration-300 w-full">
+  {# Background image: We'll use a background div with image #}
+  <div class="absolute inset-0 bg-no-repeat bg-cover bg-center opacity-60 group-hover:opacity-80 transition-opacity duration-300"
+       style="background-color: #333;">
+  </div>
+  {# Gradient overlay for better readability #}
+  <div class="absolute inset-0 bg-gradient-to-r from-gray-900/95 via-gray-900/85 to-gray-900/30"></div>
+  {# Text content #}
+  <div class="relative flex flex-col justify-between h-full p-4 text-gray-100">
+    <span class="text-xl font-extrabold drop-shadow-lg">{{ category.name }}</span>
+    <div class="mt-2 text-sm font-medium text-gray-200">
+      <span class="bg-red-600/80 px-2 py-1 rounded-md inline-block">
+        {{ category.count }} movie{{ 's' if category.count != 1 else '' }}
+      </span>
+    </div>
+  </div>
+</a>
+{% endmacro %} 

@@ -112,8 +112,8 @@ class User(db.Model):
             'name': self.name,
             'whatsapp_number': self.whatsapp_number,
             'avatar': self.avatar.to_dict() if self.avatar else None,
-            'created_at': None,  # Diese Felder existieren nicht in der Datenbank
-            'updated_at': None   # Diese Felder existieren nicht in der Datenbank
+            'created_at': None,  # These fields do not exist in the database
+            'updated_at': None   # These fields do not exist in the database
         }
 
     # Flask-Login integration for User
@@ -207,7 +207,7 @@ class Movie(db.Model):
             'genre': self.genre
         }
         if include_relationships:
-            # Debug-Log für OMDB-Daten hinzufügen
+            # Add debug log for OMDB data
             if not self.omdb_data:
                 logger.warning(f"Movie {self.id} ({self.name}) has no OMDB data")
             movie_dict.update({
@@ -260,14 +260,14 @@ class StreamingPlatform(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    # Entferne auch URL und Logo URL, da sie in der DB fehlen
+    # Remove URL and Logo URL as they are missing in the DB
     # url = db.Column(db.String(255)) # Optional URL for the platform
     # logo_url = db.Column(db.String(255)) # Optional Logo URL
     
     # Relationships
     movies = db.relationship('Movie', secondary=movie_platforms,
                            back_populates='streaming_platforms', overlaps="streaming_platforms")
-    # Entferne fehlerhafte Spalten
+    # Remove incorrect columns
     # awards = db.Column(db.String(255))
     # poster_img = db.Column(db.String(255))
     # imdb_rating = db.Column(db.Float)
@@ -284,7 +284,7 @@ class StreamingPlatform(db.Model):
         platform_dict = {
             'id': self.id,
             'name': self.name
-            # Entferne URL und Logo URL auch hier
+            # Remove URL and Logo URL here too
             # 'url': self.url, 
             # 'logo_url': self.logo_url
         }
@@ -328,10 +328,10 @@ class Category(db.Model):
             'img': self.img
         }
         if include_relationships:
-            # Kombiniere beide Beziehungen
+            # Combine both relationships
             all_movies = list(set(self.movies + self.movies_m2m))
-            # Verwende include_relationships=False für die Kategorien der Filme,
-            # aber behalte die OMDB-Daten bei
+            # Use include_relationships=False for the movie categories,
+            # but keep the OMDB data
             category_dict['movies'] = []
             for movie in all_movies:
                 movie_dict = movie.to_dict(include_relationships=False)
@@ -403,7 +403,7 @@ class MovieOMDB(db.Model):
             'effective_poster': self.effective_poster
         }
         
-        # Füge optionale Felder hinzu, wenn sie existieren
+        # Add optional fields if they exist
         if hasattr(self, 'imdb_rating'):
             data['imdb_rating'] = self.imdb_rating
         if hasattr(self, 'rotten_tomatoes'):

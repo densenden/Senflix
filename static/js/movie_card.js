@@ -89,25 +89,47 @@
                 }
                 throw new Error(errorMsg);
             }
-
-            const data = await response.json();
-            if (data.error) throw new Error(data.error);
             
-            const isNowActive = data.new_state !== undefined ? data.new_state : !wasActive;
+            // Parse the response for user status information
+            const responseData = await response.json();
             
-            updateButtonState(movieId, action, isNowActive);
-            showToast(toastMessage, 'success');
-        
+            // Update button states based on server response
+            if (responseData.success) {
+                // Update state for the clicked button
+                updateButtonState(movieId, action, responseData.new_state);
+                
+                // Update other buttons if needed
+                if (responseData.user_watched !== undefined) {
+                    updateButtonState(movieId, 'watched', responseData.user_watched);
+                }
+                if (responseData.user_watchlist !== undefined) {
+                    updateButtonState(movieId, 'watchlist', responseData.user_watchlist);
+                }
+                if (responseData.user_rated !== undefined) {
+                    updateButtonState(movieId, 'rate', responseData.user_rated);
+                }
+            }
+            
+            // Show success message
+            showToast(toastMessage);
+            
         } catch (error) {
-            console.error(`Error during ${action} action for movie ${movieId}:`, error);
-            showToast(`Error: ${error.message || 'Could not complete action.'}`, 'error');
+            console.error('Error handling button click:', error);
+            showToast(`Error: ${error.message}`, 'error');
+            // Revert the button to original state on error
+            button.classList.toggle('active', wasActive);
         } finally {
-            setTimeout(() => button.classList.remove('processing'), 250);
+            button.classList.remove('processing');
         }
     }
-    document.addEventListener('DOMContentLoaded', function() {
-        bindActionButtons();
-    });
+
+    // Initial button bindings
+    document.addEventListener('DOMContentLoaded', bindActionButtons);
+    bindActionButtons(); // Bind immediately in case DOM is already loaded
+
+    // Expose for potential external use
+    window.bindMovieCardActions = bindActionButtons;
+
     if (typeof window.showRatingModal !== 'function') {
         window.showRatingModal = function(movieId) { 
             console.warn('showRatingModal stub called for movie:', movieId);

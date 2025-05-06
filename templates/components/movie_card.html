@@ -12,7 +12,7 @@
 {% set is_watched = movie.get('user_watched', False) %}
 {% set is_on_watchlist = movie.get('user_watchlist', False) %}
 {% set is_rated = movie.get('user_rated', False) %}
-{% set watched_by_avatars = movie.get('watched_by_avatars', []) %}
+{% set is_favorite = movie.get('user_favorite', False) %}
 
 {# --- Card Structure --- #}
 <div class="movie-card-wrapper group rounded-lg overflow-hidden bg-gray-800" 
@@ -66,19 +66,8 @@
                     {% endif %}
                 
                     {# Footer with Avatars and Action Buttons in a fixed-height container #}
-                    <div class="footer-container h-8 flex items-center justify-between pb-1 pt-1 mt-1">
-                        {# Avatars Container - Left #}
-                        <div class="avatars-container h-full flex -space-x-2 overflow-visible">
-                            {% for avatar_url in watched_by_avatars %}
-                            <div class="avatar-wrapper w-6 h-6 rounded-full overflow-hidden flex-shrink-0 border border-gray-700">
-                                <img src="{{ url_for('static', filename=avatar_url) }}" 
-                                     alt="Watched by user" 
-                                     class="w-full h-full object-cover">
-                            </div>
-                            {% endfor %}
-                        </div>
-                        
-                        {# Action Buttons Container - Right #}
+                    <div class="footer-container h-8 flex items-center justify-center pb-1 pt-1 mt-1">
+                        {# Action Buttons Container #}
                         <div class="action-buttons flex space-x-1.5" onclick="event.stopPropagation(); event.preventDefault();">
                             {# Watchlist Button (Eye / Eye-Off) #}
                             <button 
@@ -129,6 +118,22 @@
                                 </svg>
                                 <span class="tooltip">{{ 'Update Rating' if is_rated else 'Rate Movie' }}</span>
                             </button>
+                            
+                            {# Favorite Button (Heart Outline / Heart Filled) #}
+                            <button 
+                                class="action-btn favorite-btn {{ 'active' if is_favorite else '' }}" 
+                                data-movie-id="{{ movie_id }}"
+                                data-action="favorite">
+                                {# Heart Outline Icon ("Add to Favorites") - Visible when NOT ACTIVE #}
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 icon-heart-outline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                </svg>
+                                {# Heart Filled Icon ("Remove from Favorites") - Visible when ACTIVE #}
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 icon-heart-filled" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                                </svg>
+                                <span class="tooltip">{{ 'Remove from Favorites' if is_favorite else 'Add to Favorites' }}</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -163,7 +168,7 @@
 }
 
 /* Except for tooltips and specific elements */
-.tooltip, .action-btn, .avatars-container {
+.tooltip, .action-btn {
     overflow: visible !important;
 }
 
@@ -221,14 +226,6 @@
 .footer-container {
     position: relative;
     width: 100%;
-}
-
-/* Avatar Container Styles */
-.avatars-container {
-    position: relative;
-    flex-shrink: 0;
-    z-index: 5;
-    padding-left: 4px;
 }
 
 /* Action Button Styles */
@@ -364,28 +361,18 @@
     display: block;
 }
 
-/* Avatar Styles */
-.avatar-wrapper {
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.2);
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    position: relative;
-    z-index: 1;
+/* Specific icon rules for favorite-btn */
+.favorite-btn:not(.active) .icon-heart-filled {
+    display: none;
 }
-
-/* Style each avatar with a smooth animation */
-.avatars-container .avatar-wrapper:nth-child(1) { z-index: 5; }
-.avatars-container .avatar-wrapper:nth-child(2) { z-index: 4; }
-.avatars-container .avatar-wrapper:nth-child(3) { z-index: 3; }
-.avatars-container .avatar-wrapper:nth-child(4) { z-index: 2; }
-.avatars-container .avatar-wrapper:nth-child(5) { z-index: 1; }
-
-.avatar-wrapper:hover {
-    transform: translateY(-3px) scale(1.15);
-    z-index: 10;
+.favorite-btn:not(.active) .icon-heart-outline {
+    display: block;
 }
-
-.transform-3d {
-    transform-style: preserve-3d;
+.favorite-btn.active .icon-heart-outline {
+    display: none;
+}
+.favorite-btn.active .icon-heart-filled {
+    display: block;
 }
 
 /* Ensure consistent icon display in all contexts */
@@ -398,25 +385,29 @@
 /* Ensure the icon visibility is consistent through all pages */
 .movie-card-wrapper .watchlist-btn:not(.active) .icon-eye-off,
 .movie-card-wrapper .watched-btn:not(.active) .icon-checkbox-checked,
-.movie-card-wrapper .rate-btn:not(.active) .icon-star-filled {
+.movie-card-wrapper .rate-btn:not(.active) .icon-star-filled,
+.movie-card-wrapper .favorite-btn:not(.active) .icon-heart-filled {
     display: none !important;
 }
 
 .movie-card-wrapper .watchlist-btn:not(.active) .icon-eye,
 .movie-card-wrapper .watched-btn:not(.active) .icon-checkbox-empty,
-.movie-card-wrapper .rate-btn:not(.active) .icon-star-outline {
+.movie-card-wrapper .rate-btn:not(.active) .icon-star-outline,
+.movie-card-wrapper .favorite-btn:not(.active) .icon-heart-outline {
     display: block !important;
 }
 
 .movie-card-wrapper .watchlist-btn.active .icon-eye,
 .movie-card-wrapper .watched-btn.active .icon-checkbox-empty,
-.movie-card-wrapper .rate-btn.active .icon-star-outline {
+.movie-card-wrapper .rate-btn.active .icon-star-outline,
+.movie-card-wrapper .favorite-btn.active .icon-heart-outline {
     display: none !important;
 }
 
 .movie-card-wrapper .watchlist-btn.active .icon-eye-off,
 .movie-card-wrapper .watched-btn.active .icon-checkbox-checked,
-.movie-card-wrapper .rate-btn.active .icon-star-filled {
+.movie-card-wrapper .rate-btn.active .icon-star-filled,
+.movie-card-wrapper .favorite-btn.active .icon-heart-filled {
     display: block !important;
 }
 </style>

@@ -22,7 +22,7 @@
         {# Users with same avatar #}
         <h3 class="text-2xl font-semibold mb-4">Users with this Avatar ({{ users|length }})</h3>
         {% if users %}
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-12">
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 mb-8">
             {% for user in users %}
               <a href="{{ url_for('user_profile', user_id=user.id) }}" class="group">
                 <div class="bg-gray-900/90 rounded-xl p-4 shadow-lg flex flex-col items-center gap-2 hover:bg-gray-800/90 transition-colors">
@@ -37,27 +37,30 @@
         {% endif %}
 
         {# Popular categories among users with this avatar #}
-        <h3 class="text-2xl font-semibold mb-4 mt-12">Popular Categories</h3>
+        <h3 class="text-2xl font-semibold mb-4 mt-10">Popular Movie Categories</h3>
+        <p class="text-gray-300 mb-4">Categories from movies favorited by users with this avatar</p>
         {% if popular_categories %}
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-12">
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-8">
             {% for category in popular_categories %}
-              <div class="bg-gray-900/90 rounded-xl p-4 shadow-lg">
+              <div class="bg-gray-900/90 rounded-xl p-4 shadow-lg hover:bg-gray-800/90 transition-colors">
                 <h4 class="text-xl font-bold mb-2">{{ category.name }}</h4>
-                <p class="text-gray-400">{{ category.count }} movies</p>
+                <p class="text-gray-400">{{ category.count }} movie{{ 's' if category.count != 1 else '' }}</p>
               </div>
             {% endfor %}
           </div>
         {% else %}
-          <p>No category data available.</p>
+          <p>No category data available. Users with this avatar haven't favorited movies yet.</p>
         {% endif %}
 
         {# Favorites from users with this avatar #}
-        <h3 class="text-2xl font-semibold mb-4 mt-12">Popular Movies</h3>
+        <h3 class="text-2xl font-semibold mb-4 mt-10">Popular Movies</h3>
         {% if favorites %}
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-12">
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 mb-8">
             {% for fav in favorites %}
               <div class="scale-90 hover:scale-100 transition-transform duration-300">
-                {{ mc.movie_card(fav.movie) }}
+                <div class="card-container overflow-visible">
+                  {{ mc.movie_card(fav.movie) }}
+                </div>
               </div>
             {% endfor %}
           </div>

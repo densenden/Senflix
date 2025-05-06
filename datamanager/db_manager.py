@@ -4,6 +4,7 @@ from sqlalchemy.orm import joinedload, subqueryload
 from typing import Dict, List, Optional, Any
 import os
 from flask import current_app
+from flask_login import current_user
 from sqlalchemy.sql import func, and_
 
 class SQLiteDataManager(DataManagerInterface):
@@ -45,51 +46,11 @@ class SQLiteDataManager(DataManagerInterface):
             return []
 
     def _add_watched_avatars_to_movies(self, movies: List[Dict], limit_avatars=3):
-        """Helper to add avatar URLs of users who watched the movies."""
-        movie_ids = [m['id'] for m in movies if m.get('id')]
-        if not movie_ids:
-            return movies # Return original list if no IDs
-
-        try:
-            # Efficiently fetch user IDs who watched these movies
-            # We use a subquery to get the relevant UserFavorite entries
-            # and then join User and Avatar
-            watched_entries = db.session.query(
-                UserFavorite.movie_id,
-                Avatar.image # Select only the image path
-            ).join(User, UserFavorite.user_id == User.id)\
-             .join(Avatar, User.avatar_id == Avatar.id)\
-             .filter(UserFavorite.movie_id.in_(movie_ids))\
-             .filter(UserFavorite.watched == True)\
-             .order_by(UserFavorite.movie_id)\
-             .all()
-
-            # Group avatars by movie_id
-            avatars_by_movie = {}
-            for movie_id, avatar_image in watched_entries:
-                if movie_id not in avatars_by_movie:
-                    avatars_by_movie[movie_id] = []
-                # Limit the number of avatars per movie
-                if len(avatars_by_movie[movie_id]) < limit_avatars:
-                    # Construct the full URL path here
-                    avatar_url = f"avatars/profile/{avatar_image}" if avatar_image else "avatars/profile/default.png" # Ensure correct default path
-                    avatars_by_movie[movie_id].append(avatar_url)
-
-            # Add the avatar list to each movie dictionary
-            for movie in movies:
-                movie_id = movie.get('id')
-                movie['watched_by_avatars'] = avatars_by_movie.get(movie_id, [])
-
-        except SQLAlchemyError as e:
-            logger.error(f"DB Error fetching watched avatars: {e}")
-            # Continue without avatars if there's an error
-            for movie in movies:
-                movie['watched_by_avatars'] = [] # Ensure key exists
-        except Exception as e: # Catch other potential errors
-            logger.error(f"Error processing watched avatars: {e}")
-            for movie in movies:
-                movie['watched_by_avatars'] = []
-                 
+        """
+        This method is kept for backward compatibility but no longer adds avatar data,
+        as avatars have been removed from movie cards.
+        """
+        # Simply return the movies unmodified
         return movies
 
     # --- User Methods ---
@@ -173,7 +134,20 @@ class SQLiteDataManager(DataManagerInterface):
                 subqueryload(Movie.streaming_platforms)
             ).get(movie_id)
             
-            return movie.to_dict() if movie else None
+            result = movie.to_dict() if movie else None
+            
+            # Check if user is logged in and add user-specific status
+            if result and current_user and hasattr(current_user, 'id') and current_user.is_authenticated:
+                # Get user favorite data if exists
+                user_favorite = UserFavorite.query.get((current_user.id, movie_id))
+                if user_favorite:
+                    # Add user status to movie data
+                    result['user_watched'] = user_favorite.watched
+                    result['user_watchlist'] = user_favorite.watchlist
+                    result['user_rated'] = user_favorite.rating is not None
+                    result['user_favorite'] = user_favorite.favorite
+            
+            return result
         except Exception as e:
             logger.error(f"Error getting movie data for {movie_id}: {e}", exc_info=True) # Add exc_info for traceback
             return None
@@ -292,15 +266,15 @@ class SQLiteDataManager(DataManagerInterface):
                         favorite: Optional[bool] = None): # Add favorite parameter
         """Add or update a user's favorite/interaction entry for a movie."""
         try:
-            # Überprüfe zuerst, ob Benutzer und Film existieren
+            # First check if user and movie exist
             user = User.query.get(user_id)
             if not user:
-                logger.error(f"upsert_favorite: Benutzer mit ID {user_id} existiert nicht")
+                logger.error(f"upsert_favorite: User with ID {user_id} does not exist")
                 return False
                 
             movie = Movie.query.get(movie_id)
             if not movie:
-                logger.error(f"upsert_favorite: Film mit ID {movie_id} existiert nicht")
+                logger.error(f"upsert_favorite: Movie with ID {movie_id} does not exist")
                 return False
                 
             fav = UserFavorite.query.get((user_id, movie_id))
@@ -314,7 +288,7 @@ class SQLiteDataManager(DataManagerInterface):
                 fav.favorite = favorite if favorite is not None else False # Set initial favorite
                 fav.rating = rating
                 fav.comment = comment
-                logger.info(f"Neue Bewertung erstellt: User {user_id}, Film {movie_id}, Rating: {rating}")
+                logger.info(f"New rating created: User {user_id}, Movie {movie_id}, Rating: {rating}")
             else:
                 # Update existing entry only if values are provided
                 if watched is not None: fav.watched = watched
@@ -323,7 +297,7 @@ class SQLiteDataManager(DataManagerInterface):
                 if rating is not None: fav.rating = rating
                  # Allow clearing comment by passing empty string, but not None
                 if comment is not None: fav.comment = comment
-                logger.info(f"Bestehende Bewertung aktualisiert: User {user_id}, Film {movie_id}, Rating: {rating}")
+                logger.info(f"Existing rating updated: User {user_id}, Movie {movie_id}, Rating: {rating}")
                 # Set watched=True if user rates or comments? Common pattern.
                 # if rating is not None or (comment is not None and comment.strip() != ''):
                 #    fav.watched = True 
@@ -374,7 +348,15 @@ class SQLiteDataManager(DataManagerInterface):
             #     fav.watched = True # Or maybe only if rating/comment?
 
             db.session.commit()
-            return {'success': True, 'new_state': not current_value} # Return new state
+            
+            # Return the new state for all attributes
+            return {
+                'success': True, 
+                'new_state': not current_value,
+                'user_watched': fav.watched,
+                'user_watchlist': fav.watchlist,
+                'user_rated': fav.rating is not None
+            }
 
         except SQLAlchemyError as e:
             db.session.rollback()
@@ -422,8 +404,15 @@ class SQLiteDataManager(DataManagerInterface):
     def get_user_favorite(self, user_id: int, movie_id: int):
         """Get a specific favorite/interaction entry."""
         try:
+            logger.info(f"Fetching user favorite for user_id={user_id}, movie_id={movie_id}")
             fav = UserFavorite.query.get((user_id, movie_id))
-            return fav.to_dict() if fav else None # to_dict() now includes 'favorite'
+            if fav:
+                result = fav.to_dict()
+                logger.info(f"Found UserFavorite: {result}")
+                return result
+            else:
+                logger.info(f"No UserFavorite found for user_id={user_id}, movie_id={movie_id}")
+                return None # to_dict() now includes 'favorite'
         except SQLAlchemyError as e:
             logger.error(f"DB Error getting favorite for user {user_id}, movie {movie_id}: {e}")
             return None

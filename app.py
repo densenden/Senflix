@@ -241,16 +241,24 @@ def movie_detail(movie_id):
 @ajax_route
 def toggle_watchlist(movie_id):
     """AJAX endpoint to add/remove a movie from the watchlist."""
-    # upsert_favorite needs to handle finding the existing state
-    return data_manager.upsert_favorite(current_user.id, movie_id, watchlist=True)
+    # Use toggle_user_favorite_attribute which handles the state toggle properly
+    return data_manager.toggle_user_favorite_attribute(current_user.id, movie_id, 'watchlist')
 
 @app.route('/toggle_watched/<int:movie_id>', methods=['POST'])
 @login_required
 @ajax_route
 def toggle_watched(movie_id):
     """AJAX endpoint to mark a movie as watched/unwatched."""
-    # upsert_favorite needs to handle finding the existing state
-    return data_manager.upsert_favorite(current_user.id, movie_id, watched=True)
+    # Use toggle_user_favorite_attribute which handles the state toggle properly
+    return data_manager.toggle_user_favorite_attribute(current_user.id, movie_id, 'watched')
+
+@app.route('/toggle_favorite/<int:movie_id>', methods=['POST'])
+@login_required
+@ajax_route
+def toggle_favorite(movie_id):
+    """AJAX endpoint to add/remove a movie from favorites."""
+    # Use toggle_user_favorite_attribute which handles the state toggle properly
+    return data_manager.toggle_user_favorite_attribute(current_user.id, movie_id, 'favorite')
 
 @app.route('/rate_movie', methods=['POST'])
 @login_required
@@ -259,42 +267,82 @@ def rate_movie():
     """AJAX endpoint to save a movie rating and comment."""
     try:
         movie_id = int(request.form['movie_id'])
-        # Rating comes from the modal script, ensure it's sent
-        rating = float(request.form.get('rating', 0)) # Default to 0 if not sent?
+        # Rating comes from the modal script, ensure it's sent and valid
+        rating_str = request.form.get('rating', '0')
+        try:
+            rating = float(rating_str) if rating_str.strip() else 0
+        except ValueError:
+            app.logger.warning(f"Invalid rating value: {rating_str}")
+            rating = 0
+            
         comment = request.form.get('comment', '')
-        # Ensure rating is within valid range if necessary (e.g., 0.5 to 5)
-        # rating = max(0.5, min(5, rating)) if rating else None 
-        result = data_manager.upsert_favorite(current_user.id, movie_id, rating=rating, comment=comment)
+        
+        app.logger.info(f"Processing rating request: movie_id={movie_id}, rating={rating}, comment={comment}")
+        
+        # When a user rates a movie, we also implicitly mark it as watched
+        result = data_manager.upsert_favorite(
+            user_id=current_user.id, 
+            movie_id=movie_id, 
+            rating=rating, 
+            comment=comment,
+            watched=True  # Implicitly mark as watched when rating
+        )
+        
         if not result:
-            app.logger.error(f"Fehler beim Speichern der Bewertung für Film {movie_id} durch Benutzer {current_user.id}")
-            return {'success': False, 'error': 'Fehler beim Speichern der Bewertung'}
-        return {'success': result}
+            app.logger.error(f"Error saving rating for movie {movie_id} by user {current_user.id}")
+            return {'success': False, 'error': 'Error saving rating'}
+            
+        # Get the updated user favorite data to return to the client
+        updated_favorite = data_manager.get_user_favorite(current_user.id, movie_id)
+        app.logger.info(f"Rating saved successfully: {updated_favorite}")
+        
+        return {
+            'success': True,
+            'rating': updated_favorite.get('rating'),
+            'comment': updated_favorite.get('comment', ''),
+            'favorite': updated_favorite.get('favorite', False),
+            'watched': updated_favorite.get('watched', False),
+            'watchlist': updated_favorite.get('watchlist', False)
+        }
     except KeyError as e:
-        app.logger.error(f"Fehlende Formularfelder bei der Bewertung: {e}")
-        return {'success': False, 'error': f'Fehlende Daten: {str(e)}'}, 400
+        app.logger.error(f"Missing form fields for rating: {e}")
+        return {'success': False, 'error': f'Missing data: {str(e)}'}, 400
     except ValueError as e:
-        app.logger.error(f"Ungültiges Datenformat bei der Bewertung: {e}")
-        return {'success': False, 'error': f'Ungültiges Datenformat: {str(e)}'}, 400
+        app.logger.error(f"Invalid data format for rating: {e}")
+        return {'success': False, 'error': f'Invalid data format: {str(e)}'}, 400
     except Exception as e:
-        app.logger.error(f"Unerwarteter Fehler bei der Filmbewertung: {e}", exc_info=True)
-        return {'success': False, 'error': 'Ein unerwarteter Fehler ist aufgetreten'}, 500
+        app.logger.error(f"Unexpected error during movie rating: {e}", exc_info=True)
+        return {'success': False, 'error': 'An unexpected error occurred'}, 500
 
 @app.route('/get_movie_rating/<int:movie_id>', methods=['GET'])
 @login_required
 @ajax_route
 def get_movie_rating(movie_id):
     """AJAX endpoint to get a user's rating and comment for a movie."""
+    app.logger.info(f"Fetching rating data for movie {movie_id} and user {current_user.id}")
     favorite = data_manager.get_user_favorite(current_user.id, movie_id)
+    
     if favorite:
-        return {
+        app.logger.info(f"Found favorite data: {favorite}")
+        response_data = {
             'success': True,
             'rating': favorite.get('rating'),
-            'comment': favorite.get('comment', '')
+            'comment': favorite.get('comment', ''),
+            'favorite': favorite.get('favorite', False),
+            'watched': favorite.get('watched', False),
+            'watchlist': favorite.get('watchlist', False)
         }
+        app.logger.info(f"Returning rating data: {response_data}")
+        return response_data
+    
+    app.logger.info(f"No favorite data found for movie {movie_id} and user {current_user.id}")
     return {
         'success': False,
         'rating': None,
-        'comment': ''
+        'comment': '',
+        'favorite': False,
+        'watched': False,
+        'watchlist': False
     }
 
 @app.route('/profile')
@@ -383,6 +431,7 @@ def user_profile(user_id):
     
     watched = [fav for fav in favorites if fav.get('watched')]
     watchlist = [fav for fav in favorites if fav.get('watchlist')]    
+    favorite_movies = [fav for fav in favorites if fav.get('favorite')]
     comments = sorted([fav for fav in favorites if fav.get('comment')], 
                       key=lambda x: x.get('created_at', '0'), reverse=True) # Sort by date if available
     last_comments = comments[:3] # Get the 3 most recent
@@ -392,6 +441,7 @@ def user_profile(user_id):
         user=user_data, # Pass the whole user_data dict
         watched=watched,
         watchlist=watchlist,
+        favorites=favorite_movies,
         last_comments=last_comments
     )
 
@@ -502,23 +552,34 @@ def avatar_detail(avatar_id):
 
         # Get users with this avatar
         users = User.query.filter_by(avatar_id=avatar_id).all()
+        app.logger.info(f"Found {len(users)} users with avatar_id={avatar_id}")
 
         # Get favorites from users with this avatar
         favorites = []
         favorite_movie_ids = set()  # To avoid duplicates
         limit_per_section = 10
 
+        # Also collect all movie IDs favorited by users with this avatar for category analysis
+        all_favorite_movie_ids = set()
+
         for user in users:
+            app.logger.info(f"Processing favorites for user_id={user.id}")
             if len(favorites) >= limit_per_section:
                 break
 
             user_favorites = UserFavorite.query.filter_by(
                 user_id=user.id,
                 favorite=True
-            ).limit(limit_per_section - len(favorites)).all()
+            ).all()  # Get all for category counting, but limit display
+            
+            app.logger.info(f"User {user.id} has {len(user_favorites)} favorites")
 
             for fav in user_favorites:
-                if fav.movie_id not in favorite_movie_ids:
+                # Add to the complete set for category analysis
+                all_favorite_movie_ids.add(fav.movie_id)
+                
+                # Add to display list if under limit
+                if len(favorites) < limit_per_section and fav.movie_id not in favorite_movie_ids:
                     movie_data = data_manager.get_movie_data(fav.movie_id)
                     if movie_data:
                         movie_with_status = data_manager._add_watched_avatars_to_movies([movie_data])[0]
@@ -532,37 +593,81 @@ def avatar_detail(avatar_id):
                         if len(favorites) >= limit_per_section:
                             break
 
-        # Get popular categories among users with this avatar
-        popular_categories = []
-        try:
-            # Query to get category counts from favorites of users with this avatar
-            category_counts = db.session.query(
-                Category.name,
-                db.func.count(movie_categories.c.movie_id).label('count')
-            ).join(
-                movie_categories,
-                Category.id == movie_categories.c.category_id
-            ).join(
-                UserFavorite,
-                movie_categories.c.movie_id == UserFavorite.movie_id
-            ).join(
-                User,
-                UserFavorite.user_id == User.id
-            ).filter(
-                User.avatar_id == avatar_id,
-                UserFavorite.favorite == True
-            ).group_by(
-                Category.name
-            ).order_by(
-                db.desc('count')
-            ).limit(8).all()
+        app.logger.info(f"Collected {len(all_favorite_movie_ids)} unique favorite movie IDs")
 
-            popular_categories = [
-                {'name': name, 'count': count}
-                for name, count in category_counts
-            ]
+        # Get all movie categories for the favorited movies
+        popular_categories = []
+        category_counts = {}
+        
+        try:
+            # First method: Query directly using SQLAlchemy relationships
+            if all_favorite_movie_ids:
+                # Get all movies with their categories
+                favorite_movies = Movie.query.filter(Movie.id.in_(all_favorite_movie_ids)).options(
+                    joinedload(Movie.categories)
+                ).all()
+                
+                # Count categories
+                for movie in favorite_movies:
+                    for category in movie.categories:
+                        if category.name in category_counts:
+                            category_counts[category.name] += 1
+                        else:
+                            category_counts[category.name] = 1
+                
+                # Also check direct category relationship
+                for movie in favorite_movies:
+                    if movie.category:
+                        if movie.category.name in category_counts:
+                            category_counts[movie.category.name] += 1
+                        else:
+                            category_counts[movie.category.name] = 1
+                
+                app.logger.info(f"Collected {len(category_counts)} categories from favorite movies")
+                
+                # Convert to list of dicts and sort by count
+                popular_categories = [
+                    {'name': name, 'count': count}
+                    for name, count in category_counts.items()
+                ]
+                popular_categories.sort(key=lambda x: x['count'], reverse=True)
+                
+                # Limit to top 8
+                popular_categories = popular_categories[:8]
+            
+            # If no results from first method, try the SQL method
+            if not popular_categories and all_favorite_movie_ids:
+                app.logger.info("Using SQL query method for categories")
+                # Query to get category counts from favorites of users with this avatar
+                category_counts = db.session.query(
+                    Category.name,
+                    db.func.count(movie_categories.c.movie_id).label('count')
+                ).join(
+                    movie_categories,
+                    Category.id == movie_categories.c.category_id
+                ).join(
+                    Movie,
+                    Movie.id == movie_categories.c.movie_id
+                ).filter(
+                    Movie.id.in_(all_favorite_movie_ids)
+                ).group_by(
+                    Category.name
+                ).order_by(
+                    db.desc('count')
+                ).limit(8).all()
+
+                popular_categories = [
+                    {'name': name, 'count': count}
+                    for name, count in category_counts
+                ]
+                
+                app.logger.info(f"SQL query returned {len(popular_categories)} categories")
+            
         except Exception as e:
-            app.logger.error(f"Error fetching popular categories: {e}")
+            app.logger.error(f"Error fetching popular categories: {e}", exc_info=True)
+            popular_categories = []
+
+        app.logger.info(f"Final popular categories: {popular_categories}")
 
         return render_template('avatar_detail.html',
                              avatar=avatar,
@@ -572,7 +677,7 @@ def avatar_detail(avatar_id):
                              current_user=current_user)
 
     except Exception as e:
-        app.logger.error(f"Error in avatar_detail route: {e}")
+        app.logger.error(f"Error in avatar_detail route: {e}", exc_info=True)
         flash('Error loading avatar details', 'error')
         return redirect(url_for('movies'))
 
