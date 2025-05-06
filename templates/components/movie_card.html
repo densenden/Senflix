@@ -19,7 +19,7 @@
      data-movie-id="{{ movie_id }}">
     {# Link the whole card #}
     <a href="{{ url_for('movie_detail', movie_id=movie_id) }}" 
-       class="block w-full h-full relative overflow-hidden rounded-lg">
+       class="movie-card-3d block w-full h-full relative overflow-hidden rounded-lg">
         
         {# Poster Background #}
         <div class="poster-bg absolute inset-0 w-full h-full transition-transform duration-150 ease-out bg-cover bg-center rounded-lg"
@@ -33,19 +33,13 @@
             {% endif %}
 
             {# Hover Overlay #}
-            <div class="overlay absolute inset-0 flex flex-col p-3 rounded-lg 
-                        bg-gradient-to-t from-black/95 via-black/60 to-transparent 
-                        opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-                
-                {# Top part - empty for now #}
-                <div class="flex-grow"></div>
-
-                {# Bottom part - info and actions #}
-                <div>
+            <div class="overlay absolute inset-0 flex flex-col justify-end p-3 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out overflow-hidden">
+                {# Glassmorphism Text Container statt Farbverlauf #}
+                <div class="movie-info-container p-2 rounded-lg backdrop-blur-sm bg-black/20 border border-white/10 shadow-xl">
                     {# Movie Title, Year, Rating #}
                     <div class="mb-2">
                         <h3 class="text-white font-bold text-base leading-tight mb-0.5 truncate" title="{{ movie_name }}">{{ movie_name }}</h3>
-                        <div class="flex items-center text-xs text-gray-300">
+                        <div class="flex items-center text-xs text-gray-100">
                             <span>{{ movie_year }}</span>
                             {% if imdb_rating and imdb_rating != 'N/A' %}
                             <span class="mx-1.5">|</span>
@@ -66,7 +60,7 @@
                         {% if movie_categories %}
                         <div class="flex flex-wrap gap-1 mt-1">
                             {% for category in movie_categories %}
-                            <span class="text-xs bg-gray-800 px-1.5 py-0.5 rounded">{{ category.name }}</span>
+                            <span class="text-xs bg-gray-800/60 px-1.5 py-0.5 rounded">{{ category.name }}</span>
                             {% endfor %}
                         </div>
                         {% endif %}
@@ -155,16 +149,34 @@
     transition: transform 0.3s;
     perspective: 1000px;
     overflow: visible; /* Allow tooltips to overflow */
+    transform-style: preserve-3d;
+}
+
+/* 3D Tilt Effect */
+.movie-card-3d {
+    transform-style: preserve-3d;
+    transition: transform 0.5s cubic-bezier(0.2, 0.85, 0.4, 1);
+}
+
+.movie-card-wrapper:hover .movie-card-3d {
+    transform: rotateY(-5deg) rotateX(8deg) scale(1.06);
 }
 
 .poster-bg {
     background-color: #1f2937; /* Fallback color */
     transform-style: preserve-3d;
     transition: transform 0.3s;
+    backface-visibility: hidden;
+}
+
+.overlay {
+    transform-style: preserve-3d;
+    transform: translateZ(20px);
+    backface-visibility: hidden;
 }
 
 .movie-card-wrapper:hover .poster-bg {
-    transform: scale(1.05);
+    transform: translateZ(10px);
 }
 
 /* Fixed Footer Container */
@@ -309,5 +321,65 @@
     z-index: 10;
 }
 </style>
+
+{# --- JavaScript für den 3D-Tilt-Effekt --- #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Alle Filmkarten für den 3D-Effekt initialisieren
+  setupMovieCards();
+  
+  // Diese Funktion erneut aufrufen, wenn neue Karten hinzugefügt werden
+  function setupMovieCards() {
+    const cards = document.querySelectorAll('.movie-card-wrapper');
+    
+    cards.forEach(card => {
+      // Vermeiden doppelter Event-Listener
+      if (card.dataset.tiltInitialized) return;
+      card.dataset.tiltInitialized = 'true';
+      
+      const inner = card.querySelector('.movie-card-3d');
+      
+      // Tilt-Effekt bei Mausbewegung
+      card.addEventListener('mousemove', e => {
+        if (!inner) return;
+        
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left; // x position within the element
+        const y = e.clientY - rect.top;  // y position within the element
+        
+        // Berechne die Position relativ zur Kartenmitte (-1 bis 1)
+        const xPercent = (x / rect.width - 0.5) * 2;  // -1 to 1
+        const yPercent = (y / rect.height - 0.5) * 2; // -1 to 1
+        
+        // Wende Transformation an (umgekehrte Richtung)
+        inner.style.transform = `
+          rotateY(${xPercent * 8}deg) 
+          rotateX(${-yPercent * 8}deg) 
+          scale(1.06)
+          translateZ(10px)
+        `;
+      });
+      
+      // Zurücksetzen beim Verlassen
+      card.addEventListener('mouseleave', () => {
+        if (!inner) return;
+        inner.style.transform = 'rotateY(0deg) rotateX(0deg) scale(1) translateZ(0)';
+      });
+    });
+  }
+  
+  // Beobachter für dynamisch hinzugefügte Karten
+  const observer = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      if (mutation.addedNodes.length) {
+        setupMovieCards();
+      }
+    });
+  });
+  
+  // Beobachte das Dokument auf Änderungen
+  observer.observe(document.body, { childList: true, subtree: true });
+});
+</script>
 
 {% endmacro %}
