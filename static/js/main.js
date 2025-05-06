@@ -1,17 +1,17 @@
-// Dynamische Sidebar-Navigation und Auto-Hide
+// Dynamic Sidebar Navigation and Auto-Hide
 (function() {
     const sidebar = document.getElementById('sidebar');
     const anchorsList = document.getElementById('sidebar-dynamic-anchors');
     let hideTimeout;
 
-    // Dynamische Navigation aus <section id=...>
+    // Dynamic navigation from <section id=...>
     function populateSidebarAnchors() {
         if (!anchorsList) return;
         anchorsList.innerHTML = '';
         const sections = document.querySelectorAll('section[id]');
         sections.forEach(section => {
             const id = section.id;
-            // Überschrift suchen
+            // Find heading
             let label = section.querySelector('h1, h2, h3, h4, h5, h6');
             label = label ? label.textContent.trim() : id;
             const li = document.createElement('li');

@@ -147,12 +147,12 @@
     aspect-ratio: 2/3;
     transition: transform 0.3s;
     perspective: 1000px;
-    overflow: hidden; /* Standard ist hidden */
+    overflow: hidden; /* Standard is hidden */
     transform-style: preserve-3d;
     border-radius: 0.5rem; /* Ensure the corners are rounded */
 }
 
-/* Kontextspezifische Anpassung für die Detailseite */
+/* Context-specific adjustment for the detail page */
 .card-container .movie-card-wrapper {
     overflow: visible !important;
 }
@@ -167,7 +167,7 @@
     overflow: visible !important;
 }
 
-/* Auf der Detailseite sollen alle Elemente sichtbar sein */
+/* On the detail page all elements should be visible */
 .card-container .movie-card-wrapper * {
     overflow: visible !important;
 }
@@ -199,7 +199,7 @@
     transform: translateZ(15px);
     backface-visibility: hidden;
     background: none !important;
-    z-index: 20; /* Höherer z-index */
+    z-index: 20; /* Higher z-index */
 }
 
 .movie-info-container {
@@ -209,7 +209,7 @@
     background-color: rgba(0, 0, 0, 0.2) !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    z-index: 25; /* Höherer z-index */
+    z-index: 25; /* Higher z-index */
 }
 
 .movie-card-wrapper:hover .poster-bg {
@@ -236,7 +236,7 @@
     display: flex;
     gap: 0.375rem;
     position: relative;
-    z-index: 30; /* Höherer z-index */
+    z-index: 30; /* Higher z-index */
 }
 
 .action-btn {
@@ -336,7 +336,7 @@
     display: block;
 }
 
-/* Spezifische Icon-Regeln für watchlist-btn */
+/* Specific icon rules for watchlist-btn */
 .watchlist-btn:not(.active) .icon-eye-off {
     display: none;
 }
@@ -350,7 +350,7 @@
     display: block;
 }
 
-/* Spezifische Icon-Regeln für watched-btn */
+/* Specific icon rules for watched-btn */
 .watched-btn:not(.active) .icon-checkbox-checked {
     display: none;
 }
@@ -421,25 +421,25 @@
 }
 </style>
 
-{# --- JavaScript für den 3D-Tilt-Effekt --- #}
+{# --- JavaScript for the 3D Tilt Effect --- #}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Alle Filmkarten für den 3D-Effekt initialisieren
+  // Initialize all movie cards for the 3D effect
   setupMovieCards();
   
-  // Diese Funktion erneut aufrufen, wenn neue Karten hinzugefügt werden
+  // Call this function again when new cards are added
   function setupMovieCards() {
     const cards = document.querySelectorAll('.movie-card-wrapper');
     
     cards.forEach(card => {
-      // Vermeiden doppelter Event-Listener
+      // Avoid duplicate event listeners
       if (card.dataset.tiltInitialized) return;
       card.dataset.tiltInitialized = 'true';
       
       const inner = card.querySelector('.movie-card-3d');
       const infoContainer = card.querySelector('.movie-info-container');
       
-      // Tilt-Effekt bei Mausbewegung
+      // Tilt effect on mouse movement
       card.addEventListener('mousemove', e => {
         if (!inner) return;
         
@@ -447,19 +447,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const x = e.clientX - rect.left; // x position within the element
         const y = e.clientY - rect.top;  // y position within the element
         
-        // Berechne die Position relativ zur Kartenmitte (-1 bis 1)
+        // Calculate position relative to card center (-1 to 1)
         const xPercent = (x / rect.width - 0.5) * 2;  // -1 to 1
         const yPercent = (y / rect.height - 0.5) * 2; // -1 to 1
         
-        // Prüfe, ob die Karte in einem Detailcontainer ist
+        // Check if the card is in a detail container
         const isDetailView = card.closest('.card-container') !== null;
         
-        // Sanftere Transformation durch geringere Rotationsfaktoren
+        // Smoother transformation through lower rotation factors
         const rotationFactor = isDetailView ? 5 : 3;
         const scaleFactor = isDetailView ? 1.05 : 1.02;
         const zTranslation = isDetailView ? 15 : 5;
         
-        // Begrenzte 3D-Rotation, um Clipping zu vermeiden
+        // Limited 3D rotation to avoid clipping
         inner.style.transform = `
           rotateY(${xPercent * rotationFactor}deg) 
           rotateX(${-yPercent * rotationFactor}deg) 
@@ -467,21 +467,21 @@ document.addEventListener('DOMContentLoaded', function() {
           translateZ(${zTranslation}px)
         `;
         
-        // Poster-Hintergrund separat bewegen für Parallax-Effekt
+        // Move poster background separately for parallax effect
         const posterBg = card.querySelector('.poster-bg');
         if (posterBg) {
           posterBg.style.transform = `translateZ(2px) scale(1.03)`;
         }
         
-        // Passen den Glasmorphismus-Effekt dynamisch an
+        // Adjust the glassmorphism effect dynamically
         if (infoContainer) {
-          // Dynamischer Blur-Effekt basierend auf Mausposition
+          // Dynamic blur effect based on mouse position
           const blurAmount = 4 + Math.abs(xPercent * 3 + yPercent * 3);
           const opacity = 0.2 + Math.abs(xPercent * 0.08 + yPercent * 0.08);
           infoContainer.style.backdropFilter = `blur(${blurAmount}px)`;
           infoContainer.style.backgroundColor = `rgba(0, 0, 0, ${opacity})`;
           
-          // Stelle sicher, dass das Overlay keinen Hintergrund hat
+          // Ensure the overlay has no background
           const overlay = card.querySelector('.overlay');
           if (overlay) {
             overlay.style.background = 'none';
@@ -489,12 +489,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
       
-      // Zurücksetzen beim Verlassen
+      // Reset when leaving
       card.addEventListener('mouseleave', () => {
         if (!inner) return;
         inner.style.transform = 'rotateY(0deg) rotateX(0deg) scale(1) translateZ(0)';
         
-        // Poster-Hintergrund zurücksetzen
+        // Reset poster background
         const posterBg = card.querySelector('.poster-bg');
         if (posterBg) {
           posterBg.style.transform = 'translateZ(0) scale(1)';
@@ -508,7 +508,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // Beobachter für dynamisch hinzugefügte Karten
+  // Observer for dynamically added cards
   const observer = new MutationObserver(mutations => {
     mutations.forEach(mutation => {
       if (mutation.addedNodes.length) {
@@ -517,7 +517,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
   
-  // Beobachte das Dokument auf Änderungen
+  // Observe the document for changes
   observer.observe(document.body, { childList: true, subtree: true });
 });
 </script>

@@ -27,19 +27,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const stars = ratingContainer.querySelectorAll('.rating-star');
     const errorMsgElement = document.getElementById('ratingErrorMessage');
     
-    // Funktion zum Anzeigen von Fehlermeldungen im Modal
+    // Function to display error messages in the modal
     function showModalError(message) {
         if (errorMsgElement) {
             errorMsgElement.textContent = message;
             errorMsgElement.classList.remove('hidden');
-            // Automatisch ausblenden nach 5 Sekunden
+            // Automatically hide after 5 seconds
             setTimeout(() => {
                 errorMsgElement.classList.add('hidden');
             }, 5000);
         }
     }
     
-    // Funktion zum Ausblenden der Fehlermeldung
+    // Function to hide the error message
     function hideModalError() {
         if (errorMsgElement) {
             errorMsgElement.classList.add('hidden');
@@ -58,20 +58,20 @@ document.addEventListener('DOMContentLoaded', function() {
             selectedRating = parseInt(star.dataset.value);
             ratingInput.value = selectedRating;
             updateStarsVisual(selectedRating);
-            // Fehlermeldung ausblenden, wenn eine Bewertung ausgewählt wird
+            // Hide error message when a rating is selected
             hideModalError();
         });
     });
     document.getElementById('ratingForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        hideModalError(); // Fehler zu Beginn zurücksetzen
+        hideModalError(); // Reset error at the beginning
         
         const submitButton = e.target.querySelector('button[type="submit"]');
         submitButton.disabled = true;
         submitButton.textContent = 'Saving...';
         const formData = new FormData(e.target);
         if (parseInt(formData.get('rating')) <= 0) {
-            showModalError('Bitte wählen Sie eine Bewertung aus (1-10 Sterne).');
+            showModalError('Please select a rating (1-10 stars).');
             submitButton.disabled = false;
             submitButton.textContent = 'Submit Rating';
             return;
@@ -94,20 +94,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     setTimeout(() => successMessage.remove(), 500);
                 }, 3000);
             } else {
-                // Fehlermeldung im Modal anzeigen, wenn verfügbar
+                // Display error message in the modal if available
                 const errorMsg = result.error || 'Error saving rating';
                 showModalError(errorMsg);
                 console.error('Rating error:', errorMsg);
             }
         } catch (error) {
             console.error('Rating error:', error);
-            // Fehlermeldung im Modal anzeigen
-            showModalError(`Fehler beim Speichern: ${error.message || 'Unbekannter Fehler'}`);
+            // Display error message in the modal
+            showModalError(`Error saving: ${error.message || 'Unknown error'}`);
             
-            // Zusätzlich Toast-Nachricht anzeigen
+            // Additionally show toast message
             const errorMessage = document.createElement('div');
             errorMessage.className = 'fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg transition-opacity duration-500';
-            errorMessage.textContent = `Fehler beim Speichern: ${error.message || 'Unbekannter Fehler'}`;
+            errorMessage.textContent = `Error saving: ${error.message || 'Unknown error'}`;
             document.body.appendChild(errorMessage);
             setTimeout(() => {
                 errorMessage.style.opacity = '0';

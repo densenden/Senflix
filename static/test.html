@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bild-Test</title>
+    <title>Image Test</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -30,42 +30,42 @@
     </style>
 </head>
 <body>
-    <h1>Bild-Test für statische Dateien</h1>
+    <h1>Image Test for Static Files</h1>
     
     <div class="image-test">
-        <h2>Direkter Pfad zu einem bekannten Bild</h2>
-        <p>Pfad: <code>/static/movies/tt0062622-omdb-poster.jpg</code></p>
+        <h2>Direct Path to a Known Image</h2>
+        <p>Path: <code>/static/movies/tt0062622-omdb-poster.jpg</code></p>
         <img src="/static/movies/tt0062622-omdb-poster.jpg" alt="2001: A Space Odyssey Poster">
     </div>
 
     <div class="image-test">
-        <h2>Direkter Pfad zu einem anderen Bild</h2>
-        <p>Pfad: <code>/static/movies/tt0111161-omdb-poster.jpg</code></p>
+        <h2>Direct Path to Another Image</h2>
+        <p>Path: <code>/static/movies/tt0111161-omdb-poster.jpg</code></p>
         <img src="/static/movies/tt0111161-omdb-poster.jpg" alt="The Shawshank Redemption Poster">
     </div>
 
     <div class="image-test">
-        <h2>Direkter Pfad zur Testdatei</h2>
-        <p>Pfad: <code>/static/movies/test.jpg</code></p>
-        <img src="/static/movies/test.jpg" alt="Testbild" onerror="this.nextElementSibling.style.display='block';">
-        <p style="display:none; color: red;">Bild konnte nicht geladen werden!</p>
+        <h2>Direct Path to Test File</h2>
+        <p>Path: <code>/static/movies/test.jpg</code></p>
+        <img src="/static/movies/test.jpg" alt="Test Image" onerror="this.nextElementSibling.style.display='block';">
+        <p style="display:none; color: red;">Image could not be loaded!</p>
     </div>
 
     <div class="image-test">
-        <h2>Fallback-Bild</h2>
-        <p>Pfad: <code>/static/movies/no-poster.jpg</code></p>
-        <img src="/static/movies/no-poster.jpg" alt="Fallback-Bild" onerror="this.nextElementSibling.style.display='block';">
-        <p style="display:none; color: red;">Bild konnte nicht geladen werden!</p>
+        <h2>Fallback Image</h2>
+        <p>Path: <code>/static/movies/no-poster.jpg</code></p>
+        <img src="/static/movies/no-poster.jpg" alt="Fallback Image" onerror="this.nextElementSibling.style.display='block';">
+        <p style="display:none; color: red;">Image could not be loaded!</p>
     </div>
 
     <script>
-        // Protokolliere Fehler beim Laden der Bilder
+        // Log errors when loading images
         document.querySelectorAll('img').forEach(img => {
             img.addEventListener('error', function() {
-                console.error(`Fehler beim Laden des Bildes: ${this.src}`);
+                console.error(`Error loading image: ${this.src}`);
             });
             img.addEventListener('load', function() {
-                console.log(`Bild erfolgreich geladen: ${this.src}`);
+                console.log(`Image successfully loaded: ${this.src}`);
             });
         });
     </script>
