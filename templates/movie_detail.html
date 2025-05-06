@@ -14,7 +14,7 @@
     {% set poster_path = 'movies/' ~ movie.omdb_data.poster_img if movie.omdb_data and movie.omdb_data.poster_img else 'placeholders/poster_missing.png' %}
     {% set fallback_poster_path = url_for('static', filename='placeholders/poster_missing.png') %}
     <img src="{{ url_for('static', filename=poster_path) }}" alt="{{ movie.name }} Poster Background"
-         class="absolute inset-0 w-full h-full object-cover object-center opacity-50"
+         class="absolute inset-0 w-full h-full object-cover object-center opacity-50 blur-sm"
          onerror="this.onerror=null; this.src='{{ fallback_poster_path }}';">
     {# Gradient Overlay #}
     <div class="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent"></div>

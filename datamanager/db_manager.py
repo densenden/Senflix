@@ -292,6 +292,17 @@ class SQLiteDataManager(DataManagerInterface):
                         favorite: Optional[bool] = None): # Add favorite parameter
         """Add or update a user's favorite/interaction entry for a movie."""
         try:
+            # Überprüfe zuerst, ob Benutzer und Film existieren
+            user = User.query.get(user_id)
+            if not user:
+                logger.error(f"upsert_favorite: Benutzer mit ID {user_id} existiert nicht")
+                return False
+                
+            movie = Movie.query.get(movie_id)
+            if not movie:
+                logger.error(f"upsert_favorite: Film mit ID {movie_id} existiert nicht")
+                return False
+                
             fav = UserFavorite.query.get((user_id, movie_id))
             if not fav:
                 # Create new entry if it doesn't exist
@@ -303,6 +314,7 @@ class SQLiteDataManager(DataManagerInterface):
                 fav.favorite = favorite if favorite is not None else False # Set initial favorite
                 fav.rating = rating
                 fav.comment = comment
+                logger.info(f"Neue Bewertung erstellt: User {user_id}, Film {movie_id}, Rating: {rating}")
             else:
                 # Update existing entry only if values are provided
                 if watched is not None: fav.watched = watched
@@ -311,6 +323,7 @@ class SQLiteDataManager(DataManagerInterface):
                 if rating is not None: fav.rating = rating
                  # Allow clearing comment by passing empty string, but not None
                 if comment is not None: fav.comment = comment
+                logger.info(f"Bestehende Bewertung aktualisiert: User {user_id}, Film {movie_id}, Rating: {rating}")
                 # Set watched=True if user rates or comments? Common pattern.
                 # if rating is not None or (comment is not None and comment.strip() != ''):
                 #    fav.watched = True 
@@ -320,10 +333,16 @@ class SQLiteDataManager(DataManagerInterface):
         except SQLAlchemyError as e:
             db.session.rollback()
             logger.error(f"DB Error upserting favorite for user {user_id}, movie {movie_id}: {e}")
+            # Log additional details for easier debugging
+            import traceback
+            logger.error(traceback.format_exc())
             return False
         except Exception as e: # Catch potential non-DB errors
             db.session.rollback()
             logger.error(f"General error upserting favorite for user {user_id}, movie {movie_id}: {e}")
+            # Log stacktrace for better debugging
+            import traceback
+            logger.error(traceback.format_exc())
             return False
 
     def toggle_user_favorite_attribute(self, user_id: int, movie_id: int, attribute: str):

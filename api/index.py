@@ -3,33 +3,33 @@ import sys
 import os
 import re
 
-# Füge den Projektpfad zum Python-Pfad hinzu
+# Add the project path to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Importiere die Flask-App
+# Import the Flask app
 from app import app, login_manager
 from flask_login import current_user, login_user
 from datamanager.interface import User
 
-# Patche die Login-Weiterleitung für Vercel
+# Patch the login redirect for Vercel
 @app.before_request
 def fix_vercel_redirects():
     """
-    Behebe Weiterleitungsprobleme für geschützte Routen in Vercel
+    Fix redirect issues for protected routes in Vercel
     """
     path = request.path
     
-    # Spezielle Behandlung für rate_movie (AJAX-Anfragen)
+    # Special handling for rate_movie (AJAX requests)
     if path == '/rate_movie' and request.method == 'POST':
-        # Stellen Sie sicher, dass ein Benutzer angemeldet ist
+        # Make sure a user is logged in
         if not current_user.is_authenticated:
-            user = User.query.first()  # Nehmen Sie einfach den ersten Benutzer
+            user = User.query.first()  # Simply take the first user
             if user:
                 login_user(user)
-        # Keine Weiterleitung, lassen Sie die Anfrage normal fortsetzen
+        # No redirect, let the request continue normally
         return None
     
-    # Spezielle Behandlung für get_movie_rating (AJAX-Anfragen)
+    # Special handling for get_movie_rating (AJAX requests)
     if path.startswith('/get_movie_rating/') and request.method == 'GET':
         if not current_user.is_authenticated:
             user = User.query.first()
@@ -37,35 +37,35 @@ def fix_vercel_redirects():
                 login_user(user)
         return None
         
-    # Direkter Zugriff auf Benutzerprofile
+    # Direct access to user profiles
     user_profile_match = re.match(r'^/users/(\d+)$', path)
     if user_profile_match and not current_user.is_authenticated:
-        # Führe Auto-Login durch, falls nicht angemeldet
+        # Perform auto-login if not logged in
         user_id = int(user_profile_match.group(1))
         user = User.query.get(user_id)
         if user:
             login_user(user)
-            # Keine Weiterleitung, erlaube die ursprüngliche Anfrage weiterzulaufen
+            # No redirect, allow the original request to continue
             return None
     
-    # Überprüfe ?next= Weiterleitungen
+    # Check ?next= redirects
     if 'next' in request.args:
         next_url = request.args.get('next', '')
         
-        # Film- und Benutzerprofil-Muster
+        # Movie and user profile patterns
         movie_pattern = re.compile(r'^/movie/(\d+)$')
         user_pattern = re.compile(r'^/users/(\d+)$')
         
-        # Behandlung von Filmweiterleitungen
+        # Handle movie redirects
         movie_match = movie_pattern.match(next_url)
         if movie_match and not current_user.is_authenticated:
-            # Auto-Login und Weiterleitung zum Film
-            user = User.query.first()  # Nimm den ersten Benutzer
+            # Auto-login and redirect to the movie
+            user = User.query.first()  # Take the first user
             if user:
                 login_user(user)
                 return redirect(next_url)
                 
-        # Behandlung von Benutzerprofil-Weiterleitungen
+        # Handle user profile redirects
         user_match = user_pattern.match(next_url)
         if user_match and not current_user.is_authenticated:
             target_user_id = int(user_match.group(1))
@@ -74,13 +74,13 @@ def fix_vercel_redirects():
                 login_user(user)
                 return redirect(next_url)
     
-    return None  # Erlaube die normale Anfragenbearbeitung
+    return None  # Allow normal request processing
 
-# Korrigiere die rate_movie Antwort für Vercel
+# Fix the rate_movie response for Vercel
 @app.route('/rate_movie', methods=['POST'])
 def vercel_rate_movie():
     """
-    Spezieller Handler für rate_movie in Vercel, der das JSON-Format korrigiert
+    Special handler for rate_movie in Vercel that fixes the JSON format
     """
     if not current_user.is_authenticated:
         user = User.query.first()
@@ -92,16 +92,31 @@ def vercel_rate_movie():
         rating = float(request.form.get('rating', 0))
         comment = request.form.get('comment', '')
         
-        # Rufe die ursprüngliche Funktion direkt auf, umgehe den Decorator
+        # Call the original function directly, bypassing the decorator
         from app import data_manager
         result = data_manager.upsert_favorite(current_user.id, movie_id, rating=rating, comment=comment)
         
-        # Gib eine eigene JSON-Antwort zurück
+        # Return a custom JSON response
         return jsonify({'success': result})
+    except KeyError as e:
+        # Fehlender Schlüssel in request.form
+        error_message = f"Missing required form field: {str(e)}"
+        print(f"ERROR: {error_message}")
+        return jsonify({'success': False, 'error': error_message}), 400
+    except ValueError as e:
+        # Fehler bei der Umwandlung von Datentypen
+        error_message = f"Invalid value format: {str(e)}"
+        print(f"ERROR: {error_message}")
+        return jsonify({'success': False, 'error': error_message}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        # Allgemeiner Fehler mit mehr Details
+        error_message = f"Error saving rating: {str(e)}"
+        print(f"ERROR: {error_message}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': error_message}), 500
 
-# Exportiere die app direkt
+# Export the app directly
 app = app
 
-# Vercel benötigt nicht den handler für Python-Serverless 
+# Vercel doesn't need the handler for Python serverless 

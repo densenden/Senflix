@@ -257,13 +257,27 @@ def toggle_watched(movie_id):
 @ajax_route
 def rate_movie():
     """AJAX endpoint to save a movie rating and comment."""
-    movie_id = int(request.form['movie_id'])
-    # Rating comes from the modal script, ensure it's sent
-    rating = float(request.form.get('rating', 0)) # Default to 0 if not sent?
-    comment = request.form.get('comment', '')
-    # Ensure rating is within valid range if necessary (e.g., 0.5 to 5)
-    # rating = max(0.5, min(5, rating)) if rating else None 
-    return data_manager.upsert_favorite(current_user.id, movie_id, rating=rating, comment=comment)
+    try:
+        movie_id = int(request.form['movie_id'])
+        # Rating comes from the modal script, ensure it's sent
+        rating = float(request.form.get('rating', 0)) # Default to 0 if not sent?
+        comment = request.form.get('comment', '')
+        # Ensure rating is within valid range if necessary (e.g., 0.5 to 5)
+        # rating = max(0.5, min(5, rating)) if rating else None 
+        result = data_manager.upsert_favorite(current_user.id, movie_id, rating=rating, comment=comment)
+        if not result:
+            app.logger.error(f"Fehler beim Speichern der Bewertung für Film {movie_id} durch Benutzer {current_user.id}")
+            return {'success': False, 'error': 'Fehler beim Speichern der Bewertung'}
+        return {'success': result}
+    except KeyError as e:
+        app.logger.error(f"Fehlende Formularfelder bei der Bewertung: {e}")
+        return {'success': False, 'error': f'Fehlende Daten: {str(e)}'}, 400
+    except ValueError as e:
+        app.logger.error(f"Ungültiges Datenformat bei der Bewertung: {e}")
+        return {'success': False, 'error': f'Ungültiges Datenformat: {str(e)}'}, 400
+    except Exception as e:
+        app.logger.error(f"Unerwarteter Fehler bei der Filmbewertung: {e}", exc_info=True)
+        return {'success': False, 'error': 'Ein unerwarteter Fehler ist aufgetreten'}, 500
 
 @app.route('/get_movie_rating/<int:movie_id>', methods=['GET'])
 @login_required

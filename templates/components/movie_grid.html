@@ -4,43 +4,24 @@
     <h2 class="text-2xl font-bold mb-4">{{ title }}</h2>
     {% endif %}
     
-    <div class="movie-grid-wrapper">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {% for movie in movies %}
-        <div class="movie-card" data-movie-id="{{ movie.id }}">
-            <div class="movie-poster">
-                <img src="/static/movies/{{ movie.img }}" 
-                     alt="{{ movie.title }}" 
-                     class="w-full h-full object-cover"
-                     onerror="this.src='/static/movies/no-poster.jpg'">
-                <div class="movie-overlay">
-                    <div class="movie-info">
-                        <h3 class="text-lg font-bold">{{ movie.title }}</h3>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-yellow-400">★</span>
-                            <span>{{ movie.rating|round(1) if movie.rating else 'N/A' }}</span>
-                        </div>
-                        <div class="flex flex-wrap gap-2 mt-2">
-                            {% for category in movie.categories %}
-                            <span class="text-xs bg-gray-800 px-2 py-1 rounded">{{ category.name }}</span>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    <div class="movie-actions">
-                        <button class="action-btn watchlist" title="Zur Watchlist hinzufügen">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                            </svg>
-                        </button>
-                        <button class="action-btn watched" title="Als gesehen markieren">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+            {% from 'components/movie_card.html' import movie_card %}
+            {{ movie_card(movie) }}
         {% endfor %}
     </div>
 </div>
+
+<style>
+    .movie-grid-container {
+        width: 100%;
+        margin-bottom: 2rem;
+    }
+    
+    /* Feste Höhe für alle Filmkarten */
+    .movie-card-wrapper {
+        height: 350px !important;
+        max-height: 350px !important;
+    }
+</style>
 {% endmacro %} 

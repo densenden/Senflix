@@ -98,9 +98,9 @@
               
               {# Movie Grid #}
               {% if same_avatar_favorites %}
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                   {% for fav in same_avatar_favorites %}
-                    <div class="scale-90 hover:scale-100 transition-transform duration-300" style="overflow: visible;">
+                    <div style="overflow: visible;">
                       {{ movie_card(fav.movie) }}
                     </div>
                   {% endfor %}
