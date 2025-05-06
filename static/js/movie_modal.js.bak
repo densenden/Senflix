@@ -1,0 +1,330 @@
+// movie_modal.js
+window.showRatingModal = function(movieId) {
+    console.log('Opening rating modal for movie ID:', movieId);
+    
+    // Debug test - use a direct fetch to see if data can be retrieved
+    fetch(`/get_movie_rating/${movieId}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('DEBUG TEST RESPONSE:', data);
+        })
+        .catch(err => {
+            console.error('DEBUG TEST ERROR:', err);
+        });
+    
+    // Fetch movie info from card
+    const card = document.querySelector(`.movie-card-wrapper[data-movie-id="${movieId}"]`);
+    if (card) {
+        const poster = card.querySelector('.poster-bg').style.backgroundImage;
+        const title = card.querySelector('h3')?.textContent || '';
+        const year = card.querySelector('.text-xs span')?.textContent || '';
+        document.getElementById('modalPoster').src = poster ? poster.replace('url("','').replace('")','') : '';
+        document.getElementById('modalTitle').textContent = title;
+        document.getElementById('modalYear').textContent = year;
+    } else {
+        console.log('Movie card not found in DOM');
+    }
+    document.getElementById('modalMovieId').value = movieId;
+    
+    // Show the modal first
+    document.getElementById('ratingModal').classList.remove('hidden');
+    document.getElementById('ratingModal').classList.add('flex');
+    
+    // Get and verify the presence of form elements
+    const commentElement = document.getElementById('comment');
+    const ratingValueElement = document.getElementById('ratingValue');
+    
+    if (!commentElement) {
+        console.error('Comment element not found in DOM!');
+    }
+    
+    if (!ratingValueElement) {
+        console.error('Rating value element not found in DOM!');
+    }
+    
+    // Don't reset form before fetching data
+    console.log('Skipping form reset to ensure data remains visible');
+    
+    // Always fetch the existing rating data, whether the button is active or not
+    console.log('Fetching rating data from server for movie ID:', movieId);
+    
+    setTimeout(() => {
+        fetch(`/get_movie_rating/${movieId}`)
+            .then(response => {
+                console.log('Server response status:', response.status);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Rating data received:', JSON.stringify(data));
+                
+                if (!data) {
+                    console.error('Received null or undefined data from API');
+                    return;
+                }
+                
+                // Update stars to reflect existing rating even if it's 0
+                if (data.success) {
+                    console.log('Success flag in data is true');
+                    // DIRECT TEST - manually set values to verify form works
+                    const commentEl = document.getElementById('comment');
+                    if (commentEl) {
+                        commentEl.value = data.comment || 'Test comment - debugging';
+                        console.log('Manually set comment to:', commentEl.value);
+                    }
+                    
+                    const ratingEl = document.getElementById('ratingValue');
+                    if (ratingEl) {
+                        const testRating = data.rating || 5;
+                        ratingEl.value = testRating;
+                        console.log('Manually set rating value to:', ratingEl.value);
+                        
+                        // Update star visuals
+                        document.querySelectorAll('.rating-star').forEach(star => {
+                            const starValue = parseInt(star.dataset.value);
+                            const shouldBeSelected = starValue <= testRating;
+                            
+                            if (shouldBeSelected) {
+                                star.classList.add('text-yellow-400', 'selected');
+                                star.classList.remove('text-gray-500');
+                            } else {
+                                star.classList.remove('text-yellow-400', 'selected');
+                                star.classList.add('text-gray-500');
+                            }
+                        });
+                    }
+                    
+                    // Original logic with more debug output
+                    console.log('Rating value from server:', data.rating, 
+                                'Type:', typeof data.rating,
+                                'Is null:', data.rating === null,
+                                'Is undefined:', data.rating === undefined);
+                    
+                    if (data.comment) {
+                        console.log('Comment found in response:', data.comment);
+                        if (commentElement) {
+                            commentElement.value = data.comment;
+                            console.log('Set comment field to:', commentElement.value, 'Field exists:', !!commentElement);
+                            
+                            // Verify the value was set
+                            setTimeout(() => {
+                                console.log('Comment value after timeout:', commentElement.value);
+                            }, 100);
+                        }
+                    } else {
+                        console.log('No comment found in data');
+                    }
+                    
+                    if (data.rating !== null && data.rating !== undefined) {
+                        const serverRating = parseFloat(data.rating);
+                        console.log('Parsed rating:', serverRating);
+                        
+                        // Use rating directly (1-10 scale)
+                        let rating = Math.round(serverRating);
+                        console.log('Rating rounded to nearest integer:', rating);
+                        
+                        if (ratingValueElement) {
+                            ratingValueElement.value = rating;
+                            console.log('Set hidden rating field value to:', ratingValueElement.value);
+                            
+                            // Verify the value was set
+                            setTimeout(() => {
+                                console.log('Rating value after timeout:', ratingValueElement.value);
+                            }, 100);
+                        }
+                        
+                        // Update star visuals 
+                        document.querySelectorAll('.rating-star').forEach(star => {
+                            const starValue = parseInt(star.dataset.value);
+                            const shouldBeSelected = starValue <= rating;
+                            
+                            if (shouldBeSelected) {
+                                star.classList.add('text-yellow-400', 'selected');
+                                star.classList.remove('text-gray-500');
+                            } else {
+                                star.classList.remove('text-yellow-400', 'selected');
+                                star.classList.add('text-gray-500');
+                            }
+                        });
+                        
+                        // Output all stars for debugging
+                        console.log('All stars after update:');
+                        document.querySelectorAll('.rating-star').forEach((star, index) => {
+                            console.log(`Star ${index+1}: ${star.classList.contains('selected') ? 'selected' : 'not selected'}`);
+                        });
+                    } else {
+                        console.log('No rating value found in data');
+                    }
+                } else {
+                    console.log('Server response indicates failure or no data');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching rating data:', error);
+            });
+    }, 500); // Add a delay to ensure the modal is fully displayed
+}
+
+window.hideRatingModal = function() {
+    document.getElementById('ratingModal').classList.add('hidden');
+    document.getElementById('ratingModal').classList.remove('flex');
+    
+    console.log('Modal hidden - form values were:', {
+        rating: document.getElementById('ratingValue')?.value,
+        comment: document.getElementById('comment')?.value
+    });
+}
+
+// Helper function to show toast messages
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `fixed bottom-4 right-4 ${type === 'success' ? 'bg-green-600' : 'bg-red-600'} text-white px-4 py-2 rounded-lg shadow-lg z-50`;
+    toast.style.opacity = '1';
+    toast.style.transition = 'opacity 0.5s ease-in-out';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    // Ensure the toast is visible for at least 3 seconds
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 500);
+    }, 3000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Movie modal JS initialized');
+    let selectedRating = 0;
+    const ratingContainer = document.getElementById('starRatingContainer');
+    if (!ratingContainer) {
+        console.warn('Rating container not found in DOM');
+        return;
+    }
+    const ratingInput = document.getElementById('ratingValue');
+    const stars = ratingContainer.querySelectorAll('.rating-star');
+    const errorMsgElement = document.getElementById('ratingErrorMessage');
+    
+    // Function to display error messages in the modal
+    function showModalError(message) {
+        if (errorMsgElement) {
+            errorMsgElement.textContent = message;
+            errorMsgElement.classList.remove('hidden');
+            // Automatically hide after 5 seconds
+            setTimeout(() => {
+                errorMsgElement.classList.add('hidden');
+            }, 5000);
+        }
+    }
+    
+    // Function to hide the error message
+    function hideModalError() {
+        if (errorMsgElement) {
+            errorMsgElement.classList.add('hidden');
+        }
+    }
+    
+    function updateStarsVisual(rating) {
+        console.log('Updating stars visual for rating:', rating);
+        stars.forEach(star => {
+            const starValue = parseInt(star.dataset.value);
+            const shouldBeSelected = starValue <= rating;
+            console.log(`Star ${starValue} should be ${shouldBeSelected ? 'selected' : 'unselected'}`);
+            
+            star.classList.toggle('text-yellow-400', shouldBeSelected);
+            star.classList.toggle('selected', shouldBeSelected);
+            star.classList.toggle('text-gray-500', !shouldBeSelected);
+        });
+    }
+    
+    stars.forEach(star => {
+        star.addEventListener('click', () => {
+            selectedRating = parseInt(star.dataset.value);
+            console.log('Star clicked, new rating:', selectedRating);
+            ratingInput.value = selectedRating;
+            updateStarsVisual(selectedRating);
+            // Hide error message when a rating is selected
+            hideModalError();
+        });
+    });
+    
+    document.getElementById('ratingForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideModalError(); // Reset error at the beginning
+        
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.textContent = 'Saving...';
+        const formData = new FormData(e.target);
+        const movieId = formData.get('movie_id');
+        const ratingValue = parseInt(formData.get('rating'));
+        
+        console.log('Submitting rating form:', {
+            movieId: movieId,
+            rating: ratingValue,
+            comment: formData.get('comment')
+        });
+        
+        if (ratingValue <= 0) {
+            showModalError('Please select a rating (1-10 stars).');
+            submitButton.disabled = false;
+            submitButton.textContent = 'Submit Rating';
+            return;
+        }
+        
+        // Use the rating value directly - no conversion needed
+        console.log('Using rating directly on 1-10 scale for database:', ratingValue);
+        
+        // Create FormData with the direct rating
+        const adjustedFormData = new FormData();
+        adjustedFormData.append('movie_id', movieId);
+        adjustedFormData.append('rating', ratingValue);
+        adjustedFormData.append('comment', formData.get('comment'));
+        
+        try {
+            const response = await fetch('/rate_movie', {
+                method: 'POST',
+                body: new URLSearchParams(adjustedFormData)
+            });
+            
+            console.log('Server response status:', response.status);
+            const result = await response.json();
+            console.log('Server response data:', result);
+            
+            if (response.ok && result.success) {
+                window.hideRatingModal();
+                
+                // Update all rate buttons for this movie to show as active
+                document.querySelectorAll(`.movie-card-wrapper[data-movie-id="${movieId}"] .rate-btn`).forEach(btn => {
+                    console.log('Updating rate button to active state');
+                    btn.classList.add('active');
+                    
+                    // Update icon display
+                    const outlineIcon = btn.querySelector('.icon-star-outline');
+                    const filledIcon = btn.querySelector('.icon-star-filled');
+                    
+                    if (outlineIcon) outlineIcon.style.display = 'none';
+                    if (filledIcon) filledIcon.style.display = 'block';
+                });
+                
+                // Show success message
+                showToast('Rating saved successfully!', 'success');
+            } else {
+                // Display error message in the modal if available
+                const errorMsg = result.error || 'Error saving rating';
+                showModalError(errorMsg);
+                console.error('Rating error:', errorMsg);
+            }
+        } catch (error) {
+            console.error('Rating error:', error);
+            // Display error message in the modal
+            showModalError(`Error saving: ${error.message || 'Unknown error'}`);
+            
+            // Additionally show toast message
+            showToast(`Error saving: ${error.message || 'Unknown error'}`, 'error');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Submit Rating';
+        }
+    });
+}); 

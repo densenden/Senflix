@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% import 'components/movie_card.html' as mc %}
 {% from 'components/navigation.html' import top_nav, side_nav %}
+{% from 'components/avatar_category_card.html' import avatar_category_card %}
 {% block content %}
 {{ top_nav(current_user=current_user) }}
 <div class="flex flex-row bg-black min-h-screen w-full">
@@ -42,10 +43,7 @@
         {% if popular_categories %}
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-8">
             {% for category in popular_categories %}
-              <div class="bg-gray-900/90 rounded-xl p-4 shadow-lg hover:bg-gray-800/90 transition-colors">
-                <h4 class="text-xl font-bold mb-2">{{ category.name }}</h4>
-                <p class="text-gray-400">{{ category.count }} movie{{ 's' if category.count != 1 else '' }}</p>
-              </div>
+              {{ avatar_category_card(category) }}
             {% endfor %}
           </div>
         {% else %}

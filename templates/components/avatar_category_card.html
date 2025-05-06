@@ -2,9 +2,12 @@
 {% macro avatar_category_card(category) %}
 <a href="{{ url_for('category_detail', category_id=category.id) }}" 
    class="group relative block h-36 rounded-xl overflow-hidden shadow-lg bg-gray-900 hover:shadow-xl transition-all duration-300 w-full">
-  {# Background image: We'll use a background div with image #}
-  <div class="absolute inset-0 bg-no-repeat bg-cover bg-center opacity-60 group-hover:opacity-80 transition-opacity duration-300"
-       style="background-color: #333;">
+  {# Background image div #}
+  <div class="absolute inset-0 bg-cover bg-center opacity-60 group-hover:opacity-80 transition-opacity duration-300 bg-gray-800">
+    {# We'll use an img tag with absolute positioning instead of background-image to avoid CSS linting issues #}
+    <img src="{{ url_for('static', filename='categories/' + (category.img or 'default-category.jpg')) }}" 
+         alt="{{ category.name }}" 
+         class="w-full h-full object-cover">
   </div>
   {# Gradient overlay for better readability #}
   <div class="absolute inset-0 bg-gradient-to-r from-gray-900/95 via-gray-900/85 to-gray-900/30"></div>

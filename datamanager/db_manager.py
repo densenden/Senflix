@@ -6,6 +6,7 @@ import os
 from flask import current_app
 from flask_login import current_user
 from sqlalchemy.sql import func, and_
+from sqlalchemy import text
 
 class SQLiteDataManager(DataManagerInterface):
     """SQLite implementation of the Data Manager Interface."""
@@ -404,17 +405,56 @@ class SQLiteDataManager(DataManagerInterface):
     def get_user_favorite(self, user_id: int, movie_id: int):
         """Get a specific favorite/interaction entry."""
         try:
-            logger.info(f"Fetching user favorite for user_id={user_id}, movie_id={movie_id}")
+            logger.info(f"=================== GET_USER_FAVORITE DEBUG ===================")
+            logger.info(f"BEGIN get_user_favorite for user_id={user_id}, movie_id={movie_id}")
+            
+            # Direct SQL query for debugging
+            from sqlalchemy import text
+            logger.info(f"Executing direct SQL query to find user favorite")
+            
+            result = db.session.execute(
+                text("SELECT * FROM user_favorites WHERE user_id = :user_id AND movie_id = :movie_id"),
+                {"user_id": user_id, "movie_id": movie_id}
+            ).fetchone()
+            
+            if result:
+                # Convert SQL result to dict for debugging
+                result_dict = dict(result)
+                logger.info(f"DIRECT SQL QUERY - Found result: {result_dict}")
+                logger.info(f"DIRECT SQL QUERY - Rating: {result_dict.get('rating')}, Type: {type(result_dict.get('rating'))}")
+                logger.info(f"DIRECT SQL QUERY - Comment: '{result_dict.get('comment')}', Type: {type(result_dict.get('comment'))}")
+            else:
+                logger.info(f"DIRECT SQL QUERY - No result found")
+            
+            # Regular ORM query
+            logger.info(f"Executing ORM query UserFavorite.query.get(({user_id}, {movie_id}))")
             fav = UserFavorite.query.get((user_id, movie_id))
+            
             if fav:
+                logger.info(f"ORM QUERY - Found UserFavorite")
+                logger.info(f"ORM QUERY - Rating: {fav.rating}, Type: {type(fav.rating)}")
+                logger.info(f"ORM QUERY - Comment: '{fav.comment}', Type: {type(fav.comment)}")
+                logger.info(f"ORM QUERY - Watched: {fav.watched}, Watchlist: {fav.watchlist}, Favorite: {fav.favorite}")
+                
                 result = fav.to_dict()
-                logger.info(f"Found UserFavorite: {result}")
+                logger.info(f"RESULT from to_dict(): {result}")
+                logger.info(f"RESULT Rating: {result.get('rating')}, Type: {type(result.get('rating'))}")
+                logger.info(f"RESULT Comment: '{result.get('comment')}', Type: {type(result.get('comment'))}")
+                logger.info(f"=================== END GET_USER_FAVORITE DEBUG ===================")
                 return result
             else:
-                logger.info(f"No UserFavorite found for user_id={user_id}, movie_id={movie_id}")
-                return None # to_dict() now includes 'favorite'
+                logger.info(f"ORM QUERY - No UserFavorite found")
+                logger.info(f"=================== END GET_USER_FAVORITE DEBUG ===================")
+                return None
         except SQLAlchemyError as e:
             logger.error(f"DB Error getting favorite for user {user_id}, movie {movie_id}: {e}")
+            logger.error(f"=================== END GET_USER_FAVORITE DEBUG ===================")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error in get_user_favorite: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            logger.error(f"=================== END GET_USER_FAVORITE DEBUG ===================")
             return None
 
     # --- Query Methods ---
@@ -648,6 +688,32 @@ class SQLiteDataManager(DataManagerInterface):
         except SQLAlchemyError as e:
             logger.error(f"DB Error getting most loved movies: {e}", exc_info=True)
             return []
+
+    def get_avg_movie_rating(self, movie_id):
+        """Calculate the average user rating for a movie."""
+        try:
+            # Get all ratings for this movie where rating is not null
+            ratings = UserFavorite.query.filter(
+                UserFavorite.movie_id == movie_id,
+                UserFavorite.rating.isnot(None)
+            ).all()
+            
+            if not ratings:
+                return None
+                
+            # Calculate average
+            total = sum(entry.rating for entry in ratings if entry.rating)
+            count = len(ratings)
+            
+            if count == 0:
+                return None
+                
+            avg_rating = round(total / count, 1)
+            logger.info(f"Calculated average rating for movie {movie_id}: {avg_rating} from {count} ratings")
+            return avg_rating
+        except Exception as e:
+            logger.error(f"Error calculating average rating for movie {movie_id}: {e}")
+            return None
 
     def get_friends_favorites(self, user_id, limit=10, offset=0):
         """DEPRECATED: Friends functionality removed."""

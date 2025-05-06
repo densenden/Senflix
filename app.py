@@ -68,6 +68,8 @@ def ajax_route(f):
             return jsonify({'error': str(e)}), 400
     return wrapped
 
+# --- Helper Functions ---
+
 # --- Routes ---
 
 @app.route('/')
@@ -202,6 +204,9 @@ def movie_detail(movie_id):
     # OMDB data is already included in movie via get_movie_data
     omdb_data = movie.get('omdb_data') 
     
+    # Calculate average user rating
+    avg_user_rating = data_manager.get_avg_movie_rating(movie_id)
+    
     # Get comments for this movie
     comments = []
     try:
@@ -234,6 +239,7 @@ def movie_detail(movie_id):
                          watched_users=watched_users, 
                          omdb_data=omdb_data, 
                          comments=comments, # Pass comments to the template
+                         avg_user_rating=avg_user_rating, # Pass average user rating
                          current_user=current_user)
 
 @app.route('/toggle_watchlist/<int:movie_id>', methods=['POST'])
@@ -319,11 +325,37 @@ def rate_movie():
 @ajax_route
 def get_movie_rating(movie_id):
     """AJAX endpoint to get a user's rating and comment for a movie."""
-    app.logger.info(f"Fetching rating data for movie {movie_id} and user {current_user.id}")
+    app.logger.info(f"=================== GET_MOVIE_RATING DEBUG ===================")
+    app.logger.info(f"BEGIN get_movie_rating - movie_id: {movie_id}, user_id: {current_user.id}")
+    
+    # Add debug info about current user
+    app.logger.info(f"Current user: {current_user.id}, {current_user.name}")
+    
+    # Debug - explicitly fetch from database
+    try:
+        app.logger.info(f"DIRECT DB QUERY - Checking UserFavorite for user {current_user.id} and movie {movie_id}")
+        user_favorite = UserFavorite.query.get((current_user.id, movie_id))
+        if user_favorite:
+            app.logger.info(f"DIRECT DB QUERY - Found UserFavorite: user_id={user_favorite.user_id}, movie_id={user_favorite.movie_id}")
+            app.logger.info(f"DIRECT DB QUERY - Rating: {user_favorite.rating}, Comment: '{user_favorite.comment}'")
+            app.logger.info(f"DIRECT DB QUERY - Watched: {user_favorite.watched}, Watchlist: {user_favorite.watchlist}, Favorite: {user_favorite.favorite}")
+        else:
+            app.logger.info(f"DIRECT DB QUERY - No UserFavorite found for user {current_user.id} and movie {movie_id}")
+    except Exception as e:
+        app.logger.error(f"DIRECT DB QUERY - Error: {e}")
+    
+    # Continue with normal flow
+    app.logger.info(f"Calling data_manager.get_user_favorite({current_user.id}, {movie_id})")
     favorite = data_manager.get_user_favorite(current_user.id, movie_id)
     
+    app.logger.info(f"Result from data_manager.get_user_favorite: {favorite}")
+    
     if favorite:
-        app.logger.info(f"Found favorite data: {favorite}")
+        app.logger.info(f"Found favorite data:")
+        app.logger.info(f"Rating: {favorite.get('rating')}, Type: {type(favorite.get('rating'))}")
+        app.logger.info(f"Comment: '{favorite.get('comment', '')}', Type: {type(favorite.get('comment', ''))}")
+        app.logger.info(f"Watched: {favorite.get('watched', False)}, Watchlist: {favorite.get('watchlist', False)}, Favorite: {favorite.get('favorite', False)}")
+        
         response_data = {
             'success': True,
             'rating': favorite.get('rating'),
@@ -333,9 +365,11 @@ def get_movie_rating(movie_id):
             'watchlist': favorite.get('watchlist', False)
         }
         app.logger.info(f"Returning rating data: {response_data}")
+        app.logger.info(f"=================== END GET_MOVIE_RATING DEBUG ===================")
         return response_data
     
     app.logger.info(f"No favorite data found for movie {movie_id} and user {current_user.id}")
+    app.logger.info(f"=================== END GET_MOVIE_RATING DEBUG ===================")
     return {
         'success': False,
         'rating': None,
@@ -607,6 +641,9 @@ def avatar_detail(avatar_id):
                     joinedload(Movie.categories)
                 ).all()
                 
+                # Count categories and track category objects for their IDs and images
+                category_objects = {}
+                
                 # Count categories
                 for movie in favorite_movies:
                     for category in movie.categories:
@@ -614,6 +651,9 @@ def avatar_detail(avatar_id):
                             category_counts[category.name] += 1
                         else:
                             category_counts[category.name] = 1
+                            
+                        # Store the category object for later use
+                        category_objects[category.name] = category
                 
                 # Also check direct category relationship
                 for movie in favorite_movies:
@@ -622,12 +662,20 @@ def avatar_detail(avatar_id):
                             category_counts[movie.category.name] += 1
                         else:
                             category_counts[movie.category.name] = 1
+                            
+                        # Store the category object for later use
+                        category_objects[movie.category.name] = movie.category
                 
                 app.logger.info(f"Collected {len(category_counts)} categories from favorite movies")
                 
                 # Convert to list of dicts and sort by count
                 popular_categories = [
-                    {'name': name, 'count': count}
+                    {
+                        'name': name,
+                        'count': count,
+                        'id': category_objects[name].id,
+                        'img': category_objects[name].img
+                    }
                     for name, count in category_counts.items()
                 ]
                 popular_categories.sort(key=lambda x: x['count'], reverse=True)
@@ -641,6 +689,8 @@ def avatar_detail(avatar_id):
                 # Query to get category counts from favorites of users with this avatar
                 category_counts = db.session.query(
                     Category.name,
+                    Category.id,
+                    Category.img,
                     db.func.count(movie_categories.c.movie_id).label('count')
                 ).join(
                     movie_categories,
@@ -651,14 +701,21 @@ def avatar_detail(avatar_id):
                 ).filter(
                     Movie.id.in_(all_favorite_movie_ids)
                 ).group_by(
-                    Category.name
+                    Category.name,
+                    Category.id,
+                    Category.img
                 ).order_by(
                     db.desc('count')
                 ).limit(8).all()
 
                 popular_categories = [
-                    {'name': name, 'count': count}
-                    for name, count in category_counts
+                    {
+                        'name': name,
+                        'id': id,
+                        'img': img,
+                        'count': count
+                    }
+                    for name, id, img, count in category_counts
                 ]
                 
                 app.logger.info(f"SQL query returned {len(popular_categories)} categories")
