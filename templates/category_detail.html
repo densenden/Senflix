@@ -18,7 +18,9 @@
   <div class="container mx-auto px-4 md:px-10">
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
       {% for movie in category.movies %}
-        {{ movie_card(movie) }}
+        <div class="card-container overflow-visible">
+          {{ movie_card(movie) }}
+        </div>
       {% else %}
         <p>No movies found in this category.</p>
       {% endfor %}

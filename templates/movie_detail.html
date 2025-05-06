@@ -46,7 +46,7 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
         {# Movie Card - Aligned Left #}
         <div class="flex justify-start">
-          <div class="w-full max-w-xs aspect-[2/3] shadow-2xl rounded-lg overflow-hidden">
+          <div class="w-full max-w-xs aspect-[2/3] card-container overflow-visible">
              {{ movie_card(movie) }}
           </div>
         </div>
@@ -151,4 +151,26 @@
 
   </div> {# End container div #}
 </div> {# End bg-black wrapper #}
+
+<style>
+  /* Stile für die Movie-Card im Detail-View */
+  .card-container {
+    position: relative;
+    z-index: 20;
+    perspective: 1000px;
+    transform-style: preserve-3d;
+  }
+  
+  /* Erlaube der Karte, beim Hover außerhalb ihres Containers zu gehen */
+  .card-container .movie-card-wrapper {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+    margin: 0;
+    overflow: visible !important; /* Override alle overflow-hidden Einstellungen */
+  }
+  
+  /* Erlaube allen Elementen der Karte, sichtbar zu bleiben */
+  .card-container .movie-card-wrapper * {
+    overflow: visible;
+  }
+</style>
 {% endblock %}

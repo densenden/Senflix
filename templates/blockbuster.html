@@ -21,7 +21,9 @@
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
       {% for movie in movies %}
         <div class="transform hover:scale-105 transition-transform duration-200">
-          {{ movie_card(movie) }}
+          <div class="card-container overflow-visible">
+            {{ movie_card(movie) }}
+          </div>
           {% if movie.favorites %}
             <div class="mt-2 text-sm text-gray-400 text-center">
               {{ movie.favorites|length }} {% if movie.favorites|length == 1 %}favorite{% else %}favorites{% endif %}

@@ -11,6 +11,49 @@
         .movie-debug-info {
             display: none;
         }
+        /* 3D-Effekt Stile für alle Filmkarten */
+        .card-container {
+            position: relative;
+            z-index: 10;
+            perspective: 1000px;
+            transform-style: preserve-3d;
+            padding: 15px;
+            margin: -15px;
+        }
+        
+        /* Erlaube der Karte, beim Hover außerhalb ihres Containers zu gehen */
+        .card-container .movie-card-wrapper {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+            transition: box-shadow 0.3s;
+            margin: 0;
+            overflow: visible !important; /* Override alle overflow-hidden Einstellungen */
+            transform-style: preserve-3d;
+            will-change: transform;
+            backface-visibility: visible;
+        }
+        
+        .card-container:hover .movie-card-wrapper {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Erlaube allen Elementen der Karte, sichtbar zu bleiben */
+        .card-container .movie-card-wrapper * {
+            overflow: visible !important;
+            backface-visibility: visible;
+        }
+        
+        /* Stelle sicher, dass die Tooltips und Aktionsbuttons sichtbar bleiben */
+        .card-container .movie-card-wrapper .tooltip,
+        .card-container .movie-card-wrapper .action-btn,
+        .card-container .movie-card-wrapper .avatars-container {
+            overflow: visible !important;
+            z-index: 30;
+        }
+
+        /* Füge zusätzlichen Raum für die Rotation hinzu */
+        .grid .card-container {
+            transform-origin: center center;
+        }
     </style>
 </head>
 <body class="bg-black text-white font-sf min-h-screen w-full">

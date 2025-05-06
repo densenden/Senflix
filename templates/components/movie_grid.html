@@ -4,10 +4,12 @@
     <h2 class="text-2xl font-bold mb-4">{{ title }}</h2>
     {% endif %}
     
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
         {% for movie in movies %}
             {% from 'components/movie_card.html' import movie_card %}
-            {{ movie_card(movie) }}
+            <div class="card-container overflow-visible">
+                {{ movie_card(movie) }}
+            </div>
         {% endfor %}
     </div>
 </div>
@@ -22,6 +24,38 @@
     .movie-card-wrapper {
         height: 350px !important;
         max-height: 350px !important;
+    }
+    
+    /* 3D-Effekt Stile, ähnlich wie auf der Detailseite */
+    .card-container {
+        position: relative;
+        z-index: 10;
+        perspective: 1000px;
+        transform-style: preserve-3d;
+    }
+    
+    /* Erlaube der Karte, beim Hover außerhalb ihres Containers zu gehen */
+    .card-container .movie-card-wrapper {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+        transition: box-shadow 0.3s;
+        margin: 0;
+        overflow: visible !important; /* Override alle overflow-hidden Einstellungen */
+    }
+    
+    .card-container:hover .movie-card-wrapper {
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Erlaube allen Elementen der Karte, sichtbar zu bleiben */
+    .card-container .movie-card-wrapper * {
+        overflow: visible !important;
+    }
+    
+    /* Stelle sicher, dass die Tooltips und Aktionsbuttons sichtbar bleiben */
+    .card-container .movie-card-wrapper .tooltip,
+    .card-container .movie-card-wrapper .action-btn,
+    .card-container .movie-card-wrapper .avatars-container {
+        overflow: visible !important;
     }
 </style>
 {% endmacro %} 

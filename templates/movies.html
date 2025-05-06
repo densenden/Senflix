@@ -47,9 +47,9 @@
               </svg>
             </a>
           </div>
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
             {% for movie in popular_movies %}
-              <div style="overflow: visible;">
+              <div class="card-container overflow-visible">
                 {{ movie_card(movie) }}
               </div>
             {% else %}
@@ -98,9 +98,9 @@
               
               {# Movie Grid #}
               {% if same_avatar_favorites %}
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
                   {% for fav in same_avatar_favorites %}
-                    <div style="overflow: visible;">
+                    <div class="card-container overflow-visible">
                       {{ movie_card(fav.movie) }}
                     </div>
                   {% endfor %}
@@ -135,7 +135,7 @@
           </div>
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for movie in top_rated %}
-              <div style="overflow: visible;">
+              <div class="card-container overflow-visible">
                 {{ movie_card(movie) }}
               </div>
             {% else %}
@@ -201,7 +201,7 @@
             {% set category_movies = category.get('movies', []) %}
             {% if category_movies %}
               {% for movie in category_movies[:10] %}
-                <div style="overflow: visible;">
+                <div class="card-container overflow-visible">
                   {{ movie_card(movie) }}
                 </div>
               {% endfor %}
