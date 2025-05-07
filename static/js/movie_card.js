@@ -1,4 +1,6 @@
 // movie_card.js
+console.log('movie_card.js loaded - Adding event listeners for rating buttons');
+
 (function() {
     function showToast(message, type = 'success') {
         const toast = document.createElement('div');
@@ -143,4 +145,22 @@
             if(modal) modal.classList.add('hidden');
         };
     }
+
+    document.addEventListener('click', function(event) {
+        // Check if the clicked element has the rate-btn class
+        if (event.target.classList.contains('rate-btn') || event.target.closest('.rate-btn')) {
+            const button = event.target.classList.contains('rate-btn') ? event.target : event.target.closest('.rate-btn');
+            const movieCard = button.closest('.movie-card-wrapper');
+            
+            if (movieCard) {
+                const movieId = movieCard.dataset.movieId;
+                console.log('Rate button clicked for movie ID:', movieId);
+                
+                // Special debugging for movie ID 10
+                if (movieId === '10') {
+                    console.log('%c SPECIAL DEBUGGING: Rate button clicked for Movie ID 10', 'color:red; font-weight:bold');
+                }
+            }
+        }
+    });
 })(); 

@@ -115,5 +115,77 @@
     <script src="{{ url_for('static', filename='js/movie_card.js') }}"></script>
     <script src="{{ url_for('static', filename='js/movie_modal.js') }}"></script>
     <script src="{{ url_for('static', filename='js/test_rating.js') }}"></script>
+    
+    <!-- Direct initialization script for modal values -->
+    <script>
+      // Direct fix for modal values not showing
+      document.addEventListener('DOMContentLoaded', function() {
+        // Create a global function to force-set comment values directly
+        window.forceSetModalValues = function(rating, comment) {
+          console.log('DIRECT FIX: Setting modal values - Rating:', rating, 'Comment:', comment);
+          
+          // Get elements
+          const commentInput = document.getElementById('comment');
+          const ratingInput = document.getElementById('ratingValue');
+          const stars = document.querySelectorAll('.rating-star');
+          
+          // Set comment directly
+          if (commentInput && comment !== null && comment !== undefined) {
+            // Use multiple approaches for setting the value
+            commentInput.value = comment;
+            
+            console.log('DIRECT FIX: Comment set to:', commentInput.value);
+          }
+          
+          // Set rating directly
+          if (ratingInput && stars && rating !== null && rating !== undefined) {
+            const ratingValue = parseFloat(rating);
+            if (!isNaN(ratingValue)) {
+              // Set rating value
+              ratingInput.value = ratingValue;
+              
+              // Update stars
+              stars.forEach(star => {
+                const starValue = parseInt(star.dataset.value);
+                if (starValue <= ratingValue) {
+                  star.classList.add('text-yellow-400', 'selected');
+                  star.classList.remove('text-gray-500');
+                } else {
+                  star.classList.remove('text-yellow-400', 'selected');
+                  star.classList.add('text-gray-500');
+                }
+              });
+              
+              console.log('DIRECT FIX: Rating set to:', ratingValue, 'Stars updated:', 
+                document.querySelectorAll('.rating-star.text-yellow-400').length);
+            }
+          }
+        };
+        
+        // Override fetch to intercept rating data and directly update modal
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options) {
+          return originalFetch(url, options).then(response => {
+            if (typeof url === 'string' && url.includes('/get_movie_rating/')) {
+              const clonedResponse = response.clone();
+              
+              // Process the response data
+              clonedResponse.json().then(data => {
+                console.log('INTERCEPTED RATING DATA:', data);
+                if (data && (data.rating || data.comment)) {
+                  // Wait a bit to ensure modal is visible
+                  setTimeout(() => {
+                    forceSetModalValues(data.rating, data.comment);
+                  }, 100);
+                }
+              }).catch(err => console.error('Error processing intercepted response:', err));
+            }
+            return response;
+          });
+        };
+        
+        console.log('DIRECT FIX: Modal initialization code loaded');
+      });
+    </script>
 </body>
 </html>

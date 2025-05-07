@@ -331,53 +331,57 @@ def get_movie_rating(movie_id):
     # Add debug info about current user
     app.logger.info(f"Current user: {current_user.id}, {current_user.name}")
     
-    # Debug - explicitly fetch from database
     try:
-        app.logger.info(f"DIRECT DB QUERY - Checking UserFavorite for user {current_user.id} and movie {movie_id}")
+        # Use direct database query for better reliability
         user_favorite = UserFavorite.query.get((current_user.id, movie_id))
-        if user_favorite:
-            app.logger.info(f"DIRECT DB QUERY - Found UserFavorite: user_id={user_favorite.user_id}, movie_id={user_favorite.movie_id}")
-            app.logger.info(f"DIRECT DB QUERY - Rating: {user_favorite.rating}, Comment: '{user_favorite.comment}'")
-            app.logger.info(f"DIRECT DB QUERY - Watched: {user_favorite.watched}, Watchlist: {user_favorite.watchlist}, Favorite: {user_favorite.favorite}")
-        else:
-            app.logger.info(f"DIRECT DB QUERY - No UserFavorite found for user {current_user.id} and movie {movie_id}")
-    except Exception as e:
-        app.logger.error(f"DIRECT DB QUERY - Error: {e}")
-    
-    # Continue with normal flow
-    app.logger.info(f"Calling data_manager.get_user_favorite({current_user.id}, {movie_id})")
-    favorite = data_manager.get_user_favorite(current_user.id, movie_id)
-    
-    app.logger.info(f"Result from data_manager.get_user_favorite: {favorite}")
-    
-    if favorite:
-        app.logger.info(f"Found favorite data:")
-        app.logger.info(f"Rating: {favorite.get('rating')}, Type: {type(favorite.get('rating'))}")
-        app.logger.info(f"Comment: '{favorite.get('comment', '')}', Type: {type(favorite.get('comment', ''))}")
-        app.logger.info(f"Watched: {favorite.get('watched', False)}, Watchlist: {favorite.get('watchlist', False)}, Favorite: {favorite.get('favorite', False)}")
         
-        response_data = {
-            'success': True,
-            'rating': favorite.get('rating'),
-            'comment': favorite.get('comment', ''),
-            'favorite': favorite.get('favorite', False),
-            'watched': favorite.get('watched', False),
-            'watchlist': favorite.get('watchlist', False)
+        if user_favorite:
+            app.logger.info(f"Found UserFavorite: user_id={user_favorite.user_id}, movie_id={user_favorite.movie_id}")
+            app.logger.info(f"Rating: {user_favorite.rating}, Comment: '{user_favorite.comment}'")
+            app.logger.info(f"Watched: {user_favorite.watched}, Watchlist: {user_favorite.watchlist}, Favorite: {user_favorite.favorite}")
+            
+            # Return the data directly from the UserFavorite object if found
+            response_data = {
+                'success': True,
+                'rating': user_favorite.rating,
+                'comment': user_favorite.comment or '',  # Convert None to empty string for consistency
+                'favorite': user_favorite.favorite,
+                'watched': user_favorite.watched,
+                'watchlist': user_favorite.watchlist
+            }
+            app.logger.info(f"Returning user favorite data: {response_data}")
+            app.logger.info(f"=================== END GET_MOVIE_RATING DEBUG ===================")
+            return response_data
+        else:
+            app.logger.info(f"No UserFavorite found for user {current_user.id} and movie {movie_id}")
+            
+            # Return a proper response when no data exists
+            response_data = {
+                'success': False,
+                'rating': None,
+                'comment': '',
+                'favorite': False,
+                'watched': False,
+                'watchlist': False
+            }
+            app.logger.info(f"Returning default empty data: {response_data}")
+            app.logger.info(f"=================== END GET_MOVIE_RATING DEBUG ===================")
+            return response_data
+            
+    except Exception as e:
+        app.logger.error(f"Error in get_movie_rating: {str(e)}", exc_info=True)
+        app.logger.error(f"=================== END GET_MOVIE_RATING DEBUG ===================")
+        
+        # Return an error response
+        return {
+            'success': False,
+            'error': str(e),
+            'rating': None,
+            'comment': '',
+            'favorite': False,
+            'watched': False,
+            'watchlist': False
         }
-        app.logger.info(f"Returning rating data: {response_data}")
-        app.logger.info(f"=================== END GET_MOVIE_RATING DEBUG ===================")
-        return response_data
-    
-    app.logger.info(f"No favorite data found for movie {movie_id} and user {current_user.id}")
-    app.logger.info(f"=================== END GET_MOVIE_RATING DEBUG ===================")
-    return {
-        'success': False,
-        'rating': None,
-        'comment': '',
-        'favorite': False,
-        'watched': False,
-        'watchlist': False
-    }
 
 @app.route('/profile')
 @login_required
