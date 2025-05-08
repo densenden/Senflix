@@ -4,7 +4,7 @@ from flask import Flask, render_template, url_for, request, redirect, flash, jso
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
 from datamanager.db_manager import SQLiteDataManager
-from datamanager.interface import User, Avatar, Category, Movie, StreamingPlatform, UserFavorite
+from datamanager.interface import User, Avatar, Category, Movie, StreamingPlatform, UserFavorite, MovieOMDB
 from datamanager.omdb_manager import OMDBManager
 from sqlalchemy.orm import joinedload
 
@@ -419,6 +419,303 @@ def search():
                 
     return render_template('search_results.html', query=query, results=results)
 
+@app.route('/search_omdb', methods=['GET'])
+@login_required
+def search_omdb():
+    """Handle movie search requests against OMDB API."""
+    query = request.args.get('q', '').strip()
+    year = request.args.get('year')
+    
+    if not query:
+        return jsonify({'results': []})
+    
+    app.logger.info(f"OMDB search: query='{query}', year='{year}'")
+    
+    # First, search in our own database
+    results = []
+    all_movies = data_manager.get_all_movies()
+    for movie_summary in all_movies:
+        if query.lower() in movie_summary.get('name', '').lower():
+            # Fetch full data only for matches
+            details = data_manager.get_movie_data(movie_summary['id'])
+            if details:
+                # Get OMDB data if available
+                omdb_data = details.get('omdb_data', {})
+                movie_data = {
+                    'id': details.get('id'),
+                    'title': details.get('name'),
+                    'year': details.get('year'),
+                    'source': 'senflix',
+                    'plot': omdb_data.get('plot', ''),
+                    'director': omdb_data.get('director', ''),
+                    'actors': omdb_data.get('actors', ''),
+                    'imdbID': omdb_data.get('imdb_id', ''),
+                    'poster': url_for('static', filename='movies/' + omdb_data.get('poster_img', 'placeholder/poster_missing.png'))
+                }
+                results.append(movie_data)
+    
+    # Try to get data from OMDB API if we have less than 5 results
+    if len(results) < 5:
+        try:
+            # First try single movie search
+            omdb_data = omdb_manager.fetch_omdb_data_by_title(query, int(year) if year and year.isdigit() else None)
+            
+            if omdb_data and omdb_data.get('Response') != 'False':
+                # It's a single movie result
+                movie_data = {
+                    'title': omdb_data.get('Title'),
+                    'year': omdb_data.get('Year'),
+                    'imdbID': omdb_data.get('imdbID'),
+                    'type': omdb_data.get('Type'),
+                    'poster': omdb_data.get('Poster'),
+                    'source': 'omdb',
+                    'plot': omdb_data.get('Plot'),
+                    'actors': omdb_data.get('Actors'),
+                    'director': omdb_data.get('Director'),
+                    'full_data': omdb_data
+                }
+                
+                # Check if this movie is already in our results (by IMDB ID)
+                if not any(r.get('imdbID') == movie_data['imdbID'] for r in results if 'imdbID' in r):
+                    results.append(movie_data)
+            
+            # If still not enough results, try search endpoint (s parameter)
+            if len(results) < 3:
+                try:
+                    app.logger.info(f"Trying OMDB search API for '{query}'")
+                    # Construct URL for OMDB search API
+                    api_key = os.getenv('OMDB_API_KEY')
+                    search_url = f"https://www.omdbapi.com/?apikey={api_key}&s={query}"
+                    if year and year.isdigit():
+                        search_url += f"&y={year}"
+                    
+                    import requests
+                    search_response = requests.get(search_url, timeout=5)
+                    search_data = search_response.json()
+                    
+                    if search_data.get('Response') == 'True' and search_data.get('Search'):
+                        app.logger.info(f"OMDB search returned {len(search_data['Search'])} results")
+                        
+                        for movie in search_data['Search'][:5]:  # Limit to 5 results
+                            # Skip if already in results
+                            if any(r.get('imdbID') == movie.get('imdbID') for r in results if 'imdbID' in r):
+                                continue
+                                
+                            # Add to results
+                            movie_data = {
+                                'title': movie.get('Title'),
+                                'year': movie.get('Year'),
+                                'imdbID': movie.get('imdbID'),
+                                'type': movie.get('Type'),
+                                'poster': movie.get('Poster'),
+                                'source': 'omdb',
+                                # These fields won't be available from search but needed for consistency
+                                'plot': '', 
+                                'actors': '',
+                                'director': ''
+                            }
+                            results.append(movie_data)
+                except Exception as e:
+                    app.logger.error(f"Error using OMDB search API: {e}")
+        except Exception as e:
+            app.logger.error(f"Error searching OMDB API: {e}")
+    
+    app.logger.info(f"Returning {len(results)} search results")
+    return jsonify({'results': results})
+
+@app.route('/add_new_movie', methods=['POST'])
+@login_required
+def add_new_movie():
+    """Handle adding a new movie from the modal."""
+    try:
+        app.logger.info("Starting add_new_movie process")
+        data = request.json
+        
+        if not data:
+            app.logger.error("No data provided in request")
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        app.logger.info(f"Received movie data: {data}")
+        
+        # Basic validation
+        if not data.get('title'):
+            app.logger.error("Movie title is required")
+            return jsonify({'success': False, 'error': 'Movie title is required'}), 400
+        
+        # Prepare movie data for database - note that plot is NOT in the Movie model
+        movie_data = {
+            'name': data.get('title'),
+            'year': data.get('year'),
+            # Remove plot field as it's not in the Movie model
+            # 'plot': data.get('plot')  
+        }
+        
+        app.logger.info(f"Prepared movie data for database: {movie_data}")
+        
+        # Check if movie already exists by IMDB ID in MovieOMDB table
+        existing_movie = None
+        if data.get('imdbID'):
+            existing_omdb = MovieOMDB.query.filter_by(imdb_id=data.get('imdbID')).first()
+            if existing_omdb:
+                existing_movie = Movie.query.get(existing_omdb.id)
+                app.logger.info(f"Movie already exists with ID: {existing_movie.id}")
+        
+        # If not found by IMDB ID, also try searching by name and year
+        if not existing_movie and data.get('title') and data.get('year'):
+            existing_movie = Movie.query.filter_by(
+                name=data.get('title'),
+                year=data.get('year')
+            ).first()
+            if existing_movie:
+                app.logger.info(f"Movie found by name and year with ID: {existing_movie.id}")
+        
+        if existing_movie:
+            movie_id = existing_movie.id
+            new_movie = {'id': movie_id}
+        else:
+            # Add the movie to the database
+            app.logger.info("Adding new movie to database")
+            new_movie = data_manager.add_movie(movie_data)
+            
+            if not new_movie:
+                app.logger.error("Failed to add movie to database")
+                return jsonify({'success': False, 'error': 'Failed to add movie to database'}), 500
+            
+            movie_id = new_movie.get('id')
+            app.logger.info(f"New movie added with ID: {movie_id}")
+            
+            # If the movie comes from OMDB, get additional data
+            if data.get('source') == 'omdb' and data.get('imdbID'):
+                app.logger.info(f"Fetching OMDB data for movie ID: {movie_id}")
+                
+                # Either use get_or_fetch_omdb_data or manually create the MovieOMDB entry
+                try:
+                    # Create a new OMDB data entry for this movie
+                    omdb_entry = MovieOMDB(
+                        id=movie_id,
+                        imdb_id=data.get('imdbID'),
+                        title=data.get('title'),
+                        year=str(data.get('year', '')),
+                        plot=data.get('plot'),  # Plot belongs in MovieOMDB table
+                        director=data.get('director'),
+                        actors=data.get('actors'),
+                        poster_img=None  # Will be handled by OMDB manager
+                    )
+                    from datamanager.interface import db
+                    db.session.add(omdb_entry)
+                    db.session.commit()
+                    app.logger.info(f"Added basic OMDB entry for movie {movie_id}")
+                    
+                    # Now let the OMDB manager fetch the complete data
+                    omdb_manager.get_or_fetch_omdb_data(movie_id)
+                except Exception as e:
+                    app.logger.error(f"Error creating OMDB entry: {e}")
+                    # Continue even if this fails - it's not critical
+        
+        # Add movie to user's collections based on selections
+        user_id = current_user.id
+        
+        # Update user preferences
+        watched = data.get('watched', False)
+        watchlist = data.get('watchlist', False)
+        favorite = data.get('favorite', False)
+        rating = data.get('rating')
+        comment = data.get('comment', '')
+        
+        app.logger.info(f"Updating user preferences: user_id={user_id}, movie_id={movie_id}, watched={watched}, watchlist={watchlist}, favorite={favorite}, rating={rating}")
+        
+        # Update user's movie preferences
+        result = data_manager.upsert_favorite(
+            user_id=user_id,
+            movie_id=movie_id,
+            rating=rating,
+            comment=comment,
+            watched=watched,
+            watchlist=watchlist,
+            favorite=favorite
+        )
+        
+        if not result:
+            app.logger.error(f"Failed to update user preferences for movie {movie_id}")
+            return jsonify({'success': False, 'error': 'Failed to update user preferences'}), 500
+        
+        # Save categories if provided
+        if data.get('categories'):
+            app.logger.info(f"Saving categories for movie {movie_id}: {data.get('categories')}")
+            
+            # Get all categories to add at once 
+            categories_to_add = []
+            for category_id in data.get('categories'):
+                try:
+                    # Get category
+                    category = Category.query.get(int(category_id))
+                    if category:
+                        categories_to_add.append(category)
+                    else:
+                        app.logger.warning(f"Category {category_id} not found when adding movie {movie_id}")
+                except Exception as e:
+                    app.logger.error(f"Error finding category {category_id}: {e}")
+            
+            # If we have categories to add
+            if categories_to_add:
+                try:
+                    # Get the movie once
+                    movie = Movie.query.get(movie_id)
+                    if movie:
+                        # Use the SQL association table directly instead of the relationship
+                        from datamanager.interface import db, movie_categories
+                        
+                        # Add movie-category associations
+                        for category in categories_to_add:
+                            # Check if association already exists
+                            exists = db.session.query(movie_categories).filter_by(
+                                movie_id=movie_id,
+                                category_id=category.id
+                            ).first()
+                            
+                            if not exists:
+                                # Insert into the association table
+                                db.session.execute(movie_categories.insert().values(
+                                    movie_id=movie_id,
+                                    category_id=category.id
+                                ))
+                        
+                        # Commit all changes at once
+                        db.session.commit()
+                        app.logger.info(f"Added movie {movie_id} to {len(categories_to_add)} categories")
+                    else:
+                        app.logger.warning(f"Movie {movie_id} not found when adding categories")
+                except Exception as e:
+                    app.logger.error(f"Error saving categories for movie {movie_id}: {e}", exc_info=True)
+                    db.session.rollback()
+        
+        app.logger.info(f"Movie {movie_id} added successfully")
+        return jsonify({
+            'success': True,
+            'movie_id': movie_id
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error adding new movie: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/categories', methods=['GET'])
+@login_required
+def get_categories():
+    """API endpoint to get all categories."""
+    try:
+        categories = data_manager.get_all_categories()
+        return jsonify({
+            'success': True,
+            'categories': categories
+        })
+    except Exception as e:
+        app.logger.error(f"Error getting categories: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 # Obsolete route? Consider removing if not used.
 @app.route('/users')
 def users():
@@ -743,4 +1040,4 @@ def avatar_detail(avatar_id):
         return redirect(url_for('movies'))
 
 if __name__=='__main__':
-    app.run(debug=True, port=5002)
+    app.run(debug=True, port=5003)

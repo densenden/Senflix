@@ -19,9 +19,17 @@
           </a>
           <div>
             <h1 class="text-5xl font-extrabold text-white drop-shadow-lg mb-2">{{ user['name'] }}'s Movies</h1>
-            <a href="{{ url_for('user_selection') }}" class="inline-flex items-center px-4 py-2 rounded-full bg-[#e50914]/20 hover:bg-[#e50914]/30 border border-[#e50914]/50 hover:border-[#e50914] backdrop-blur-sm transition-all duration-300 group">
-              <span class="text-sm font-medium text-white group-hover:text-white/90">Switch Role</span>
-            </a>
+            <div class="flex gap-3">
+              <a href="{{ url_for('user_selection') }}" class="inline-flex items-center px-4 py-2 rounded-full bg-[#e50914]/20 hover:bg-[#e50914]/30 border border-[#e50914]/50 hover:border-[#e50914] backdrop-blur-sm transition-all duration-300 group">
+                <span class="text-sm font-medium text-white group-hover:text-white/90">Switch Role</span>
+              </a>
+              <button id="addMovieBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-full bg-[#e50914]/80 hover:bg-[#e50914] border border-[#e50914] backdrop-blur-sm transition-all duration-300 group">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span class="text-sm font-medium text-white">Add Movie</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -93,4 +101,5 @@
     </div>
   </div>
 </div>
+<script src="{{ url_for('static', filename='js/add_movie_modal.js') }}"></script>
 {% endblock %}

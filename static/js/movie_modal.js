@@ -29,6 +29,8 @@ window.showRatingModal = function(movieId) {
                 </div>
                 
                 <div class="absolute bottom-0 left-0 w-full p-6 z-10">
+                    <!-- Added stronger gradient under title -->
+                    <div class="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-black/90 via-black/70 to-transparent -z-10"></div>
                     <h2 id="modalTitle" class="text-4xl font-bold text-white mb-1">${title}</h2>
                     <p id="modalYear" class="text-xl text-white/80">${year}</p>
                 </div>
@@ -266,14 +268,18 @@ function fetchExistingRating(movieId) {
     const cacheBuster = new Date().getTime();
     const fetchUrl = `/get_movie_rating/${movieId}?t=${cacheBuster}`;
     
+    console.log(`Fetching existing rating from: ${fetchUrl}`);
+    
     fetch(fetchUrl, {
         method: 'GET',
         headers: {
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache'
-        }
+        },
+        credentials: 'same-origin' // Ensure cookies are sent with the request
     })
     .then(response => {
+        console.log(`Response status: ${response.status}`);
         if (!response.ok) {
             throw new Error(`Server returned status: ${response.status}`);
         }
@@ -284,7 +290,8 @@ function fetchExistingRating(movieId) {
         console.log(`Rating data for movie ${movieId}:`, data);
         
         // Skip updating form if we don't have valid data
-        if (!data || (data.success === false && !data.rating && !data.comment)) {
+        if (!data) {
+            console.error("No data returned from server");
             return;
         }
         
@@ -292,7 +299,7 @@ function fetchExistingRating(movieId) {
         if (data.rating !== null && data.rating !== undefined) {
             const rating = parseFloat(data.rating);
             
-            if (!isNaN(rating)) {
+            if (!isNaN(rating) && rating > 0) {
                 console.log(`Setting rating to ${rating} stars`);
                 
                 // Set hidden input value
@@ -315,13 +322,17 @@ function fetchExistingRating(movieId) {
                 
                 // Also update card status
                 updateMovieCardStatus(movieId, { rated: true, rating: rating });
+            } else {
+                console.log(`Invalid or zero rating value: ${rating}`);
             }
+        } else {
+            console.log("No rating found in data");
         }
         
         // Set comment value
         if (data.comment !== undefined && commentInput) {
-            commentInput.value = data.comment;
-            console.log(`Set comment to: ${data.comment}`);
+            commentInput.value = data.comment || '';
+            console.log(`Set comment to: ${data.comment || '(empty)'}`);
         }
     })
     .catch(error => {
@@ -329,6 +340,11 @@ function fetchExistingRating(movieId) {
         if (errorMessage) {
             errorMessage.textContent = `Error loading rating data: ${error.message}`;
             errorMessage.classList.remove('hidden');
+            
+            // Auto-hide error after 3 seconds
+            setTimeout(() => {
+                errorMessage.classList.add('hidden');
+            }, 3000);
         }
     });
 }

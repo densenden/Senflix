@@ -71,6 +71,7 @@ console.log('movie_card.js loaded - Adding event listeners for rating buttons');
                 toastMessage = 'Favorites updated successfully!';
             } else if (action === 'rate') {
                 if (typeof window.showRatingModal === 'function') {
+                    console.log(`Opening rating modal for movie ID: ${movieId}`);
                     window.showRatingModal(movieId);
                 } else {
                     console.error('showRatingModal function is not defined globally.');
@@ -135,7 +136,7 @@ console.log('movie_card.js loaded - Adding event listeners for rating buttons');
     if (typeof window.showRatingModal !== 'function') {
         window.showRatingModal = function(movieId) { 
             console.warn('showRatingModal stub called for movie:', movieId);
-             alert('Rating modal functionality is not loaded correctly.'); 
+            alert('Rating modal functionality is not loaded correctly.'); 
         };
     }
     if (typeof window.hideRatingModal !== 'function') {
@@ -146,19 +147,35 @@ console.log('movie_card.js loaded - Adding event listeners for rating buttons');
         };
     }
 
+    // Enhanced debugging for rate button clicks
     document.addEventListener('click', function(event) {
-        // Check if the clicked element has the rate-btn class
+        // Check for rate buttons with various selectors to ensure we catch all
+        let rateBtn = null;
         if (event.target.classList.contains('rate-btn') || event.target.closest('.rate-btn')) {
-            const button = event.target.classList.contains('rate-btn') ? event.target : event.target.closest('.rate-btn');
-            const movieCard = button.closest('.movie-card-wrapper');
+            rateBtn = event.target.classList.contains('rate-btn') ? event.target : event.target.closest('.rate-btn');
+        } else if (event.target.classList.contains('star-btn') || event.target.closest('.star-btn')) {
+            rateBtn = event.target.classList.contains('star-btn') ? event.target : event.target.closest('.star-btn');
+        } else if (event.target.classList.contains('star-rating') || event.target.closest('.star-rating')) {
+            rateBtn = event.target.classList.contains('star-rating') ? event.target : event.target.closest('.star-rating');
+        } else if (event.target.classList.contains('action-btn') && event.target.dataset.action === 'rate') {
+            rateBtn = event.target;
+        }
+        
+        if (rateBtn) {
+            const movieCard = rateBtn.closest('.movie-card-wrapper');
             
             if (movieCard) {
                 const movieId = movieCard.dataset.movieId;
-                console.log('Rate button clicked for movie ID:', movieId);
+                console.log(`Rate button clicked for movie ID: ${movieId}`);
                 
-                // Special debugging for movie ID 10
-                if (movieId === '10') {
-                    console.log('%c SPECIAL DEBUGGING: Rate button clicked for Movie ID 10', 'color:red; font-weight:bold');
+                // Prevent default to avoid any navigation
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // Call rating modal directly
+                if (typeof window.showRatingModal === 'function') {
+                    console.log(`Opening rating modal for movie ID: ${movieId}`);
+                    window.showRatingModal(movieId);
                 }
             }
         }
