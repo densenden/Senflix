@@ -73,3 +73,4 @@ instance/
 # Deployment
 vercel.json
 .vercel
+data/senflix.sqlite
