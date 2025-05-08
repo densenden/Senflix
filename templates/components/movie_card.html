@@ -6,7 +6,7 @@
 {% set movie_img = movie.get('img', '') %}
 {% set movie_rating = movie.get('rating') %}
 {% set movie_categories = movie.get('categories', []) %}
-{% set omdb_data = movie.get('omdb_data', {}) %}
+{% set omdb_data = movie.get('omdb_data') or {} %}
 {% set imdb_rating = omdb_data.get('imdb_rating') %}
 {% set poster_img = omdb_data.get('poster_img', movie_img) %}
 {% set is_watched = movie.get('user_watched', False) %}

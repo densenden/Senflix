@@ -440,7 +440,11 @@ def search_omdb():
             details = data_manager.get_movie_data(movie_summary['id'])
             if details:
                 # Get OMDB data if available
-                omdb_data = details.get('omdb_data', {})
+                omdb_data = details.get('omdb_data') or {}
+                poster_img = omdb_data.get('poster_img')
+                default_poster = 'no-poster.jpg'
+                poster_path = f"movies/{poster_img}" if poster_img else f"movies/{default_poster}"
+                
                 movie_data = {
                     'id': details.get('id'),
                     'title': details.get('name'),
@@ -450,7 +454,7 @@ def search_omdb():
                     'director': omdb_data.get('director', ''),
                     'actors': omdb_data.get('actors', ''),
                     'imdbID': omdb_data.get('imdb_id', ''),
-                    'poster': url_for('static', filename='movies/' + omdb_data.get('poster_img', 'placeholder/poster_missing.png'))
+                    'poster': url_for('static', filename=poster_path)
                 }
                 results.append(movie_data)
     
@@ -463,15 +467,15 @@ def search_omdb():
             if omdb_data and omdb_data.get('Response') != 'False':
                 # It's a single movie result
                 movie_data = {
-                    'title': omdb_data.get('Title'),
-                    'year': omdb_data.get('Year'),
-                    'imdbID': omdb_data.get('imdbID'),
-                    'type': omdb_data.get('Type'),
-                    'poster': omdb_data.get('Poster'),
+                    'title': omdb_data.get('Title', ''),
+                    'year': omdb_data.get('Year', ''),
+                    'imdbID': omdb_data.get('imdbID', ''),
+                    'type': omdb_data.get('Type', ''),
+                    'poster': omdb_data.get('Poster', ''),
                     'source': 'omdb',
-                    'plot': omdb_data.get('Plot'),
-                    'actors': omdb_data.get('Actors'),
-                    'director': omdb_data.get('Director'),
+                    'plot': omdb_data.get('Plot', ''),
+                    'actors': omdb_data.get('Actors', ''),
+                    'director': omdb_data.get('Director', ''),
                     'full_data': omdb_data
                 }
                 
@@ -503,11 +507,11 @@ def search_omdb():
                                 
                             # Add to results
                             movie_data = {
-                                'title': movie.get('Title'),
-                                'year': movie.get('Year'),
-                                'imdbID': movie.get('imdbID'),
-                                'type': movie.get('Type'),
-                                'poster': movie.get('Poster'),
+                                'title': movie.get('Title', ''),
+                                'year': movie.get('Year', ''),
+                                'imdbID': movie.get('imdbID', ''),
+                                'type': movie.get('Type', ''),
+                                'poster': movie.get('Poster', ''),
                                 'source': 'omdb',
                                 # These fields won't be available from search but needed for consistency
                                 'plot': '', 
@@ -542,12 +546,11 @@ def add_new_movie():
             app.logger.error("Movie title is required")
             return jsonify({'success': False, 'error': 'Movie title is required'}), 400
         
-        # Prepare movie data for database - note that plot is NOT in the Movie model
+        # Create minimal movie data for Senflix database
         movie_data = {
             'name': data.get('title'),
             'year': data.get('year'),
-            # Remove plot field as it's not in the Movie model
-            # 'plot': data.get('plot')  
+            'director': data.get('director', '')
         }
         
         app.logger.info(f"Prepared movie data for database: {movie_data}")
@@ -583,58 +586,86 @@ def add_new_movie():
             
             movie_id = new_movie.get('id')
             app.logger.info(f"New movie added with ID: {movie_id}")
+        
+        # Process OMDB data and save poster
+        poster_filename = None
+        if data.get('source') == 'omdb' and data.get('imdbID'):
+            app.logger.info(f"Processing OMDB data for movie {movie_id}")
             
-            # If the movie comes from OMDB, get additional data
-            if data.get('source') == 'omdb' and data.get('imdbID'):
-                app.logger.info(f"Fetching OMDB data for movie ID: {movie_id}")
+            try:
+                # If we have a poster URL, save the poster
+                poster_url = data.get('poster')
+                imdb_id = data.get('imdbID')
                 
+                if poster_url and poster_url != 'N/A' and imdb_id:
+                    app.logger.info(f"Saving poster from URL: {poster_url}")
+                    poster_filename = omdb_manager.save_poster(poster_url, movie_id, imdb_id)
+                    app.logger.info(f"Poster saved as: {poster_filename or 'None'}")
+                
+                # Try to get full data from OMDB API if we have an IMDB ID
                 try:
-                    # Instead of manually creating the entry, prepare OMDB data and save it
-                    # We need to format the data similarly to what the OMDB API returns
-                    omdb_data = {
-                        'imdbID': data.get('imdbID'),
-                        'Title': data.get('title'),
-                        'Year': data.get('year'),
-                        'Plot': data.get('plot'),
-                        'Director': data.get('director'),
-                        'Actors': data.get('actors'),
-                        'Poster': data.get('poster')
-                    }
-                    
-                    app.logger.info(f"Saving OMDB data for movie {movie_id}: {omdb_data}")
-                    
-                    # Use the OMDB manager to format and save the data
-                    # This will handle saving the poster and all other fields
-                    db_data = {
-                        'id': movie_id,
-                        'imdb_id': omdb_data.get('imdbID'),
-                        'title': omdb_data.get('Title'),
-                        'year': omdb_data.get('Year'),
-                        'plot': omdb_data.get('Plot'),
-                        'director': omdb_data.get('Director'),
-                        'actors': omdb_data.get('Actors'),
-                        # Let other fields be null initially
-                    }
-                    
-                    # Save the poster if available
-                    poster_url = omdb_data.get('Poster')
-                    imdb_id = omdb_data.get('imdbID')
-                    
-                    if poster_url and poster_url != 'N/A' and imdb_id:
-                        app.logger.info(f"Saving poster for movie {movie_id}: {poster_url}")
-                        saved_filename = omdb_manager.save_poster(poster_url, movie_id, imdb_id)
-                        db_data['poster_img'] = saved_filename
-                    
-                    # Save to database
-                    result = omdb_manager.save_omdb_data_to_db(movie_id, db_data)
-                    app.logger.info(f"OMDB data saved: {result}")
-                    
-                    # Also get full data from OMDB if available
-                    omdb_manager.get_or_fetch_omdb_data(movie_id)
-                    
-                except Exception as e:
-                    app.logger.error(f"Error saving OMDB data: {e}", exc_info=True)
-                    # Continue even if this fails
+                    if data.get('imdbID'):
+                        # First try to fetch directly by IMDB ID for more accurate results
+                        imdb_id = data.get('imdbID')
+                        omdb_direct_data = omdb_manager.fetch_omdb_data_by_imdb_id(imdb_id)
+                        
+                        if omdb_direct_data:
+                            # If we got data directly by IMDB ID, convert to our DB format
+                            complete_data = {
+                                'id': movie_id,
+                                'imdb_id': omdb_direct_data.get('imdbID'),
+                                'title': omdb_direct_data.get('Title'),
+                                'year': omdb_direct_data.get('Year'),
+                                'rated': omdb_direct_data.get('Rated'),
+                                'released': omdb_direct_data.get('Released'),
+                                'runtime': omdb_direct_data.get('Runtime'),
+                                'genre': omdb_direct_data.get('Genre'),
+                                'director': omdb_direct_data.get('Director'),
+                                'writer': omdb_direct_data.get('Writer'),
+                                'actors': omdb_direct_data.get('Actors'),
+                                'plot': omdb_direct_data.get('Plot'),
+                                'language': omdb_direct_data.get('Language'),
+                                'country': omdb_direct_data.get('Country'),
+                                'awards': omdb_direct_data.get('Awards'),
+                                'imdb_rating': omdb_direct_data.get('imdbRating'),
+                                'rotten_tomatoes': next((r['Value'] for r in omdb_direct_data.get('Ratings', []) if r['Source'] == 'Rotten Tomatoes'), None),
+                                'metacritic': omdb_direct_data.get('Metascore'),
+                                'type': omdb_direct_data.get('Type'),
+                                'dvd': omdb_direct_data.get('DVD'),
+                                'box_office': omdb_direct_data.get('BoxOffice'),
+                                'production': omdb_direct_data.get('Production'),
+                                'website': omdb_direct_data.get('Website'),
+                                'poster_img': poster_filename # Use saved poster filename
+                            }
+                            
+                            # Save the complete data
+                            if omdb_manager.save_omdb_data_to_db(movie_id, complete_data):
+                                app.logger.info(f"Saved complete OMDB data from direct API fetch with poster: {poster_filename}")
+                            else:
+                                app.logger.error(f"Failed to save complete OMDB data to database")
+                        else:
+                            # Fall back to the existing method
+                            complete_omdb_data = omdb_manager.get_or_fetch_omdb_data(movie_id)
+                            app.logger.info(f"Retrieved complete OMDB data via get_or_fetch_omdb_data: {complete_omdb_data is not None}")
+                            
+                            # If we have a poster that wasn't saved by get_or_fetch_omdb_data, update it
+                            if complete_omdb_data and poster_filename and 'poster_img' not in complete_omdb_data:
+                                try:
+                                    omdb_obj = MovieOMDB.query.get(movie_id)
+                                    if omdb_obj:
+                                        omdb_obj.poster_img = poster_filename
+                                        db.session.commit()
+                                        app.logger.info(f"Updated poster_img for movie {movie_id} to {poster_filename}")
+                                except Exception as e:
+                                    app.logger.error(f"Error updating poster_img: {e}")
+                    else:
+                        # If no IMDB ID, use the existing method
+                        complete_omdb_data = omdb_manager.get_or_fetch_omdb_data(movie_id)
+                        app.logger.info(f"Retrieved complete OMDB data: {complete_omdb_data is not None}")
+                except Exception as omdb_error:
+                    app.logger.error(f"Error fetching complete OMDB data: {omdb_error}")
+            except Exception as e:
+                app.logger.error(f"Error processing OMDB data: {e}", exc_info=True)
         
         # Add movie to user's collections based on selections
         user_id = current_user.id
@@ -716,7 +747,8 @@ def add_new_movie():
         app.logger.info(f"Movie {movie_id} added successfully")
         return jsonify({
             'success': True,
-            'movie_id': movie_id
+            'movie_id': movie_id,
+            'poster_filename': poster_filename
         })
         
     except Exception as e:

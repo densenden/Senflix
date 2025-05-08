@@ -601,8 +601,14 @@
                     modal.remove();
                 }
                 
+                // Show more detailed success message
+                let successMessage = 'Movie added successfully!';
+                if (data.poster_filename) {
+                    successMessage += ' Poster saved.';
+                }
+                
                 // Show success toast after modal is closed
-                showToast('Movie added successfully!', 'success');
+                showToast(successMessage, 'success');
                 
                 // Refresh the page after a short delay
                 setTimeout(() => {

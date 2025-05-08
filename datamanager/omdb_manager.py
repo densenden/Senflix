@@ -3,6 +3,7 @@ import sys
 import requests
 from dotenv import load_dotenv
 from .interface import db, MovieOMDB, Movie
+from sqlalchemy.exc import SQLAlchemyError
 import urllib.request
 import ssl
 from pathlib import Path
@@ -49,34 +50,33 @@ class OMDBManager:
         filepath = self.movies_dir / filename
         
         try:
-            # Use custom opener only if secure context was created
-            opener_args = {} 
-            if self.ssl_context:
-                opener_args['context'] = self.ssl_context
+            # Use requests instead of urllib for better SSL handling
+            response = requests.get(poster_url, timeout=10, stream=True)
+            response.raise_for_status()  # Raise exception for HTTP errors
+            
+            # Check content type to ensure it's an image
+            content_type = response.headers.get('Content-Type', '')
+            if not content_type.startswith('image/'):
+                logger.warning(f"Content is not an image: {content_type} for URL {poster_url}")
+                return None
                 
-            # Build opener and install it globally (affects other urllib requests too)
-            # Consider creating a local opener instance if this causes issues
-            opener = urllib.request.build_opener(urllib.request.HTTPSHandler(**opener_args))
-            urllib.request.install_opener(opener)
+            # Save the image to file
+            with open(filepath, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
             
-            # Download the image
-            urllib.request.urlretrieve(poster_url, filepath)
-            
-            if filepath.exists() and filepath.stat().st_size > 0: # Check if file exists and is not empty
-                logger.info(f"Poster saved for movie {movie_id}: {filepath}")
-                return filename # Return the filename on success
+            if filepath.exists() and filepath.stat().st_size > 0:
+                logger.info(f"Poster saved successfully for movie {movie_id}: {filepath}")
+                return filename
             else:
-                logger.error(f"Failed to save poster for movie {movie_id} to {filepath}. File might be empty or not created.")
-                if filepath.exists(): # Clean up empty file
+                logger.error(f"Failed to save poster for movie {movie_id}. File might be empty or not created.")
+                if filepath.exists():
                     filepath.unlink()
                 return None
             
-        except urllib.error.URLError as e:
-             logger.error(f"URL Error saving poster for movie {movie_id} from {poster_url}: {e}")
-             return None
-        except ssl.SSLError as e:
-             logger.error(f"SSL Error saving poster for movie {movie_id} from {poster_url}: {e}")
-             return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request error saving poster for movie {movie_id} from {poster_url}: {e}")
+            return None
         except Exception as e:
             logger.error(f"Unexpected error saving poster for movie {movie_id}: {e}", exc_info=True)
             return None
@@ -114,6 +114,38 @@ class OMDBManager:
              return None
         except requests.exceptions.RequestException as e:
             logger.error(f"Request error fetching OMDB data for title '{title}': {e}", exc_info=True)
+            return None
+
+    @lru_cache(maxsize=200)
+    def fetch_omdb_data_by_imdb_id(self, imdb_id: str) -> Optional[Dict]:
+        """Fetch movie data from OMDB API by IMDB ID."""
+        if not self.api_key:
+             logger.error("Cannot fetch OMDB data: API key not configured.")
+             return None
+             
+        params = {
+            'apikey': self.api_key,
+            'i': imdb_id,
+            'plot': 'full' # Request full plot details
+        }
+        
+        try:
+            response = requests.get(self.base_url, params=params, timeout=10)
+            response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
+            data = response.json()
+            
+            if data.get('Response') == 'False':
+                # Log API errors (e.g., "Movie not found!") but return None
+                logger.warning(f"OMDB API Error for IMDB ID '{imdb_id}': {data.get('Error')}")
+                return None
+                
+            return data # Return the JSON data as a dictionary
+            
+        except requests.exceptions.Timeout:
+             logger.error(f"Timeout fetching OMDB data for IMDB ID '{imdb_id}'.")
+             return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request error fetching OMDB data for IMDB ID '{imdb_id}': {e}", exc_info=True)
             return None
 
     def get_or_fetch_omdb_data(self, movie_id: int) -> Optional[Dict]:
