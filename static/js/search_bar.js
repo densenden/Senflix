@@ -18,6 +18,12 @@
         // Toggle search results on input focus/blur
         searchInput.addEventListener('focus', function() {
             resultsContainer.classList.remove('hidden');
+            
+            // Check if there's already text in the search input and trigger search if needed
+            const query = searchInput.value.trim();
+            if (query.length >= 2) {
+                performSearch(query, resultsContainer);
+            }
         });
         
         // Close search results when clicking outside
@@ -36,6 +42,9 @@
                 clearTimeout(searchTimeout);
             }
             
+            // Make sure the results container is visible
+            resultsContainer.classList.remove('hidden');
+            
             // Clear results if query is too short
             if (query.length < 2) {
                 resultsContainer.innerHTML = '<div class="px-4 py-2 text-sm text-gray-400">Enter at least 2 characters</div>';
@@ -48,7 +57,7 @@
             // Set a timeout to avoid too many requests
             searchTimeout = setTimeout(() => {
                 performSearch(query, resultsContainer);
-            }, 500);
+            }, 300); // Reduced from 500ms to 300ms for faster response
         });
         
         // Handle keyboard navigation and enter key
@@ -68,6 +77,15 @@
                 }
             }
         });
+        
+        // Check if there's already text in the search input on page load and trigger search if needed
+        const initialQuery = searchInput.value.trim();
+        if (initialQuery.length >= 2) {
+            // Show the results container
+            resultsContainer.classList.remove('hidden');
+            // Perform the search with existing query
+            performSearch(initialQuery, resultsContainer);
+        }
     }
     
     // Navigate through search results with keyboard
@@ -98,6 +116,9 @@
         fetch(`/search_omdb?q=${encodeURIComponent(query)}`)
             .then(response => response.json())
             .then(data => {
+                // Make sure the results container is visible
+                resultsContainer.classList.remove('hidden');
+                
                 if (!data.results || data.results.length === 0) {
                     resultsContainer.innerHTML = '<div class="px-4 py-2 text-sm text-gray-400">No results found</div>';
                     return;
@@ -130,6 +151,8 @@
                 });
             })
             .catch(error => {
+                // Make sure the results container is visible even when error occurs
+                resultsContainer.classList.remove('hidden');
                 console.error('Error searching:', error);
                 resultsContainer.innerHTML = '<div class="px-4 py-2 text-sm text-red-400">Error searching</div>';
             });

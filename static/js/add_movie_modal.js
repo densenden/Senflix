@@ -295,25 +295,39 @@
             return;
         }
         
+        // Immediate visual feedback
         resultsContainer.innerHTML = '<div class="text-center text-white/70 py-8">Searching...</div>';
         
         // Set a timeout to avoid too many requests
         searchTimeout = setTimeout(() => {
             searchMovies(query);
-        }, 500);
+        }, 300); // Reduced from 500ms to 300ms for faster response
     }
     
     // Search for movies
     function searchMovies(query) {
+        const resultsContainer = document.getElementById('search-results');
+        
+        // Show loading indicator if not already shown
+        if (resultsContainer.innerHTML.indexOf('Searching...') === -1) {
+            resultsContainer.innerHTML = '<div class="text-center text-white/70 py-8">Searching...</div>';
+        }
+        
         fetch(`/search_omdb?q=${encodeURIComponent(query)}`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 displaySearchResults(data.results || []);
             })
             .catch(error => {
                 console.error('Error searching for movies:', error);
-                const resultsContainer = document.getElementById('search-results');
-                resultsContainer.innerHTML = '<div class="text-center text-red-400 py-8">Error searching for movies</div>';
+                if (resultsContainer) {
+                    resultsContainer.innerHTML = '<div class="text-center text-red-400 py-8">Error searching for movies</div>';
+                }
             });
     }
     
@@ -609,6 +623,12 @@
                 
                 // Show success toast after modal is closed
                 showToast(successMessage, 'success');
+                
+                // Clear the search input before reloading the page
+                const searchInput = document.getElementById('search-input');
+                if (searchInput) {
+                    searchInput.value = '';
+                }
                 
                 // Refresh the page after a short delay
                 setTimeout(() => {
