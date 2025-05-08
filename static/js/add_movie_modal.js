@@ -26,10 +26,10 @@
     });
     
     // Show the add movie modal
-    function showAddMovieModal() {
+    function showAddMovieModal(movieDataParam, startStep) {
         // Reset state
-        currentStep = 1;
-        selectedMovie = null;
+        currentStep = startStep || 1;
+        selectedMovie = movieDataParam || null;
         selectedCategories = [];
         moviePreferences = {
             watched: false,
@@ -60,7 +60,7 @@
                     <div class="flex justify-between mt-4">
                         ${Array.from({length: totalSteps}, (_, i) => 
                             `<div class="flex flex-col items-center">
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center ${i+1 === 1 ? 'bg-[#e50914] text-white' : 'bg-white/20 text-white/70'} text-sm font-bold">${i+1}</div>
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center ${i+1 === currentStep ? 'bg-[#e50914] text-white' : i+1 < currentStep ? 'bg-green-500 text-white' : 'bg-white/20 text-white/70'} text-sm font-bold">${i+1}</div>
                                 <span class="text-xs mt-1 text-white/70">Step ${i+1}</span>
                             </div>`
                         ).join('<div class="flex-1 h-px bg-white/20 self-center mx-2"></div>')}
@@ -70,7 +70,7 @@
                 <!-- Modal content area -->
                 <div id="modal-content" class="p-6">
                     <!-- Step 1: Search for a movie -->
-                    <div id="step-1" class="step-content">
+                    <div id="step-1" class="step-content ${currentStep === 1 ? '' : 'hidden'}">
                         <h3 class="text-xl font-semibold text-white mb-4">Search for a movie</h3>
                         <div class="mb-4">
                             <input type="text" id="movie-search" placeholder="Enter movie title..." 
@@ -85,7 +85,7 @@
                     </div>
                     
                     <!-- Step 2: Movie Info -->
-                    <div id="step-2" class="step-content hidden">
+                    <div id="step-2" class="step-content ${currentStep === 2 ? '' : 'hidden'}">
                         <h3 class="text-xl font-semibold text-white mb-4">Movie Information</h3>
                         <div id="movie-info" class="space-y-4">
                             <!-- Movie info will appear here -->
@@ -93,7 +93,7 @@
                     </div>
                     
                     <!-- Step 3: User Experience -->
-                    <div id="step-3" class="step-content hidden">
+                    <div id="step-3" class="step-content ${currentStep === 3 ? '' : 'hidden'}">
                         <h3 class="text-xl font-semibold text-white mb-4">Your Experience</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
@@ -137,7 +137,7 @@
                     </div>
                     
                     <!-- Step 4: Categories -->
-                    <div id="step-4" class="step-content hidden">
+                    <div id="step-4" class="step-content ${currentStep === 4 ? '' : 'hidden'}">
                         <h3 class="text-xl font-semibold text-white mb-4">Select Categories (1-5)</h3>
                         <div id="categories-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             <!-- Categories will be loaded here -->
@@ -150,11 +150,11 @@
                 
                 <!-- Modal footer with buttons -->
                 <div class="p-6 border-t border-white/20 flex justify-between">
-                    <button id="prev-step-btn" class="px-5 py-2 bg-white/20 backdrop-blur-sm text-white rounded-lg hover:bg-white/30 transition-colors">
+                    <button id="prev-step-btn" class="px-5 py-2 bg-white/20 backdrop-blur-sm text-white rounded-lg hover:bg-white/30 transition-colors ${currentStep === 1 ? 'invisible' : ''}">
                         Back
                     </button>
                     <button id="next-step-btn" class="px-5 py-2 bg-amber-500/80 backdrop-blur-sm text-white rounded-lg hover:bg-amber-500 transition-colors">
-                        Next
+                        ${currentStep === totalSteps ? 'Save Movie' : 'Next'}
                     </button>
                 </div>
             </div>
@@ -167,15 +167,26 @@
         document.getElementById('closeModalBtn').addEventListener('click', hideAddMovieModal);
         document.getElementById('prev-step-btn').addEventListener('click', goToPreviousStep);
         document.getElementById('next-step-btn').addEventListener('click', goToNextStep);
-        document.getElementById('movie-search').addEventListener('input', handleMovieSearch);
+        
+        // Only set up search if we're on step 1
+        if (currentStep === 1) {
+            document.getElementById('movie-search').addEventListener('input', handleMovieSearch);
+        }
         
         // Star rating in Step 3
         document.querySelectorAll('.rating-star').forEach(star => {
             star.addEventListener('click', handleRatingClick);
         });
         
-        // Hide back button on first step
-        updateNavigationButtons();
+        // If we're starting with a movie already selected, display it
+        if (selectedMovie && currentStep === 2) {
+            displayMovieInfo(selectedMovie);
+        }
+        
+        // If we're on step 4, load categories
+        if (currentStep === 4) {
+            loadCategories();
+        }
         
         // Modal click outside to close
         document.getElementById('add-movie-modal').addEventListener('click', function(e) {

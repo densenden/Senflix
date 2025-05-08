@@ -54,6 +54,11 @@
         .grid .card-container {
             transform-origin: center center;
         }
+        
+        /* Search result styles */
+        .search-result.selected {
+            background-color: rgba(229, 9, 20, 0.3);
+        }
     </style>
 </head>
 <body class="bg-black text-white font-sf min-h-screen w-full">
@@ -68,5 +73,7 @@
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/movie_card.js') }}"></script>
     <script src="{{ url_for('static', filename='js/movie_modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/add_movie_modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/search_bar.js') }}"></script>
 </body>
 </html>

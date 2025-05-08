@@ -588,29 +588,53 @@ def add_new_movie():
             if data.get('source') == 'omdb' and data.get('imdbID'):
                 app.logger.info(f"Fetching OMDB data for movie ID: {movie_id}")
                 
-                # Either use get_or_fetch_omdb_data or manually create the MovieOMDB entry
                 try:
-                    # Create a new OMDB data entry for this movie
-                    omdb_entry = MovieOMDB(
-                        id=movie_id,
-                        imdb_id=data.get('imdbID'),
-                        title=data.get('title'),
-                        year=str(data.get('year', '')),
-                        plot=data.get('plot'),  # Plot belongs in MovieOMDB table
-                        director=data.get('director'),
-                        actors=data.get('actors'),
-                        poster_img=None  # Will be handled by OMDB manager
-                    )
-                    from datamanager.interface import db
-                    db.session.add(omdb_entry)
-                    db.session.commit()
-                    app.logger.info(f"Added basic OMDB entry for movie {movie_id}")
+                    # Instead of manually creating the entry, prepare OMDB data and save it
+                    # We need to format the data similarly to what the OMDB API returns
+                    omdb_data = {
+                        'imdbID': data.get('imdbID'),
+                        'Title': data.get('title'),
+                        'Year': data.get('year'),
+                        'Plot': data.get('plot'),
+                        'Director': data.get('director'),
+                        'Actors': data.get('actors'),
+                        'Poster': data.get('poster')
+                    }
                     
-                    # Now let the OMDB manager fetch the complete data
+                    app.logger.info(f"Saving OMDB data for movie {movie_id}: {omdb_data}")
+                    
+                    # Use the OMDB manager to format and save the data
+                    # This will handle saving the poster and all other fields
+                    db_data = {
+                        'id': movie_id,
+                        'imdb_id': omdb_data.get('imdbID'),
+                        'title': omdb_data.get('Title'),
+                        'year': omdb_data.get('Year'),
+                        'plot': omdb_data.get('Plot'),
+                        'director': omdb_data.get('Director'),
+                        'actors': omdb_data.get('Actors'),
+                        # Let other fields be null initially
+                    }
+                    
+                    # Save the poster if available
+                    poster_url = omdb_data.get('Poster')
+                    imdb_id = omdb_data.get('imdbID')
+                    
+                    if poster_url and poster_url != 'N/A' and imdb_id:
+                        app.logger.info(f"Saving poster for movie {movie_id}: {poster_url}")
+                        saved_filename = omdb_manager.save_poster(poster_url, movie_id, imdb_id)
+                        db_data['poster_img'] = saved_filename
+                    
+                    # Save to database
+                    result = omdb_manager.save_omdb_data_to_db(movie_id, db_data)
+                    app.logger.info(f"OMDB data saved: {result}")
+                    
+                    # Also get full data from OMDB if available
                     omdb_manager.get_or_fetch_omdb_data(movie_id)
+                    
                 except Exception as e:
-                    app.logger.error(f"Error creating OMDB entry: {e}")
-                    # Continue even if this fails - it's not critical
+                    app.logger.error(f"Error saving OMDB data: {e}", exc_info=True)
+                    # Continue even if this fails
         
         # Add movie to user's collections based on selections
         user_id = current_user.id
