@@ -16,7 +16,7 @@ window.showRatingModal = function(movieId) {
     const modalHtml = `
     <div id="rating-modal" class="fixed inset-0 z-50 flex items-center justify-center">
         <!-- Full screen backdrop with blur effect -->
-        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm z-0"></div>
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm z-0"></div>
         
         <!-- Modal content with glass effect -->
         <div class="relative z-10 w-full max-w-2xl mx-auto bg-white/10 backdrop-blur-md rounded-xl overflow-hidden shadow-2xl">
@@ -24,7 +24,7 @@ window.showRatingModal = function(movieId) {
             <div class="relative h-72 overflow-hidden">
                 <!-- Movie poster background with stronger gradient overlay -->
                 <div class="absolute inset-0">
-                    <div class="absolute inset-0 bg-gradient-to-b from-black/10 via-black/60 to-black/95 z-0"></div>
+                    <div class="absolute inset-0 bg-gradient-to-b from-black/30 via-black/70 to-black/95 z-0"></div>
                     <div class="absolute inset-0 bg-cover bg-center z-0" style="background-image: url('${posterUrl}')"></div>
                 </div>
                 
@@ -78,8 +78,8 @@ window.showRatingModal = function(movieId) {
         </div>
     </div>`;
     
-    // Remove any existing modals first including test modals
-    const existingModals = document.querySelectorAll('#rating-modal, #ratingModal, #testRatingModal, #glass-rating-modal');
+    // Remove any existing modals
+    const existingModals = document.querySelectorAll('[id$="Modal"], [id$="modal"]');
     existingModals.forEach(modal => modal.remove());
     
     // Add modal to the document
@@ -181,9 +181,8 @@ window.showRatingModal = function(movieId) {
                     toast.remove();
                 }, 3000);
                 
-                // Update UI - mark the rate button as active
-                const rateButtons = document.querySelectorAll(`.movie-card-wrapper[data-movie-id="${movieId}"] .rate-btn`);
-                rateButtons.forEach(btn => btn.classList.add('active'));
+                // Update UI to reflect the new rating status
+                updateMovieCardStatus(movieId, { rated: true, rating: rating });
             } else {
                 // Show error message
                 if (errorMessage) {
@@ -199,9 +198,60 @@ window.showRatingModal = function(movieId) {
         }
     });
     
-    // Immediately fetch existing rating
-    fetchExistingRating(movieId);
+    // Immediately fetch existing rating with delay to ensure DOM is ready
+    setTimeout(() => {
+        fetchExistingRating(movieId);
+    }, 100);
 };
+
+// Function to update movie card status icons
+function updateMovieCardStatus(movieId, status) {
+    const card = document.querySelector(`.movie-card-wrapper[data-movie-id="${movieId}"]`);
+    if (!card) return;
+    
+    // Update rate button/icon status
+    if (status.rated) {
+        // Find all rate buttons for this movie
+        const rateButtons = card.querySelectorAll('.rate-btn, .star-btn, .star-rating');
+        rateButtons.forEach(btn => {
+            btn.classList.add('active', 'text-yellow-400');
+            btn.classList.remove('text-gray-400', 'text-gray-500');
+            
+            // If it has an SVG, update its color too
+            const svg = btn.querySelector('svg');
+            if (svg) {
+                svg.classList.add('text-yellow-400');
+                svg.classList.remove('text-gray-400', 'text-gray-500');
+            }
+        });
+    }
+    
+    // Update watched button/icon status if needed
+    if (status.watched !== undefined) {
+        const watchButtons = card.querySelectorAll('.watch-btn, .eye-btn');
+        watchButtons.forEach(btn => {
+            if (status.watched) {
+                btn.classList.add('active', 'text-blue-400');
+                btn.classList.remove('text-gray-400', 'text-gray-500');
+            } else {
+                btn.classList.remove('active', 'text-blue-400');
+                btn.classList.add('text-gray-500');
+            }
+            
+            // If it has an SVG, update its color too
+            const svg = btn.querySelector('svg');
+            if (svg) {
+                if (status.watched) {
+                    svg.classList.add('text-blue-400');
+                    svg.classList.remove('text-gray-400', 'text-gray-500');
+                } else {
+                    svg.classList.remove('text-blue-400');
+                    svg.classList.add('text-gray-500');
+                }
+            }
+        });
+    }
+}
 
 // Function to fetch and apply existing rating
 function fetchExistingRating(movieId) {
@@ -230,6 +280,9 @@ function fetchExistingRating(movieId) {
         return response.json();
     })
     .then(data => {
+        // Log what we received to help debug
+        console.log(`Rating data for movie ${movieId}:`, data);
+        
         // Skip updating form if we don't have valid data
         if (!data || (data.success === false && !data.rating && !data.comment)) {
             return;
@@ -240,10 +293,13 @@ function fetchExistingRating(movieId) {
             const rating = parseFloat(data.rating);
             
             if (!isNaN(rating)) {
+                console.log(`Setting rating to ${rating} stars`);
+                
                 // Set hidden input value
                 ratingInput.value = rating;
                 
-                // Update stars
+                // Update stars visually
+                let starsUpdated = 0;
                 stars.forEach(star => {
                     const starValue = parseInt(star.dataset.value);
                     const starSvg = star.querySelector('svg');
@@ -251,17 +307,25 @@ function fetchExistingRating(movieId) {
                     if (starValue <= rating) {
                         starSvg.classList.remove('text-gray-300');
                         starSvg.classList.add('text-yellow-400');
+                        starsUpdated++;
                     }
                 });
+                
+                console.log(`Updated ${starsUpdated} stars out of ${stars.length}`);
+                
+                // Also update card status
+                updateMovieCardStatus(movieId, { rated: true, rating: rating });
             }
         }
         
         // Set comment value
         if (data.comment !== undefined && commentInput) {
             commentInput.value = data.comment;
+            console.log(`Set comment to: ${data.comment}`);
         }
     })
     .catch(error => {
+        console.error(`Error fetching rating for movie ${movieId}:`, error);
         if (errorMessage) {
             errorMessage.textContent = `Error loading rating data: ${error.message}`;
             errorMessage.classList.remove('hidden');

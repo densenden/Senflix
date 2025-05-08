@@ -80,7 +80,14 @@ def fix_vercel_redirects():
 @app.route('/rate_movie', methods=['POST'])
 def vercel_rate_movie():
     """
-    Special handler for rate_movie in Vercel that fixes the JSON format
+    Special handler for rate_movie in Vercel that fixes the JSON format.
+    
+    Endpoint accepts POST requests with form data:
+    - movie_id: Integer ID of the movie being rated
+    - rating: Float value for the rating (optional)
+    - comment: Text comment for the rating (optional)
+    
+    Returns JSON response with success status or error details.
     """
     if not current_user.is_authenticated:
         user = User.query.first()
@@ -99,17 +106,17 @@ def vercel_rate_movie():
         # Return a custom JSON response
         return jsonify({'success': result})
     except KeyError as e:
-        # Fehlender Schlüssel in request.form
+        # Missing key in request.form
         error_message = f"Missing required form field: {str(e)}"
         print(f"ERROR: {error_message}")
         return jsonify({'success': False, 'error': error_message}), 400
     except ValueError as e:
-        # Fehler bei der Umwandlung von Datentypen
+        # Error when converting data types
         error_message = f"Invalid value format: {str(e)}"
         print(f"ERROR: {error_message}")
         return jsonify({'success': False, 'error': error_message}), 400
     except Exception as e:
-        # Allgemeiner Fehler mit mehr Details
+        # General error with more details
         error_message = f"Error saving rating: {str(e)}"
         print(f"ERROR: {error_message}")
         import traceback
