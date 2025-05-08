@@ -1,124 +1,184 @@
 # SenFlix
 
-SenFlix is a web-based movie management application built with Flask and SQLAlchemy. It allows users to browse, rate, and manage movies, as well as create personal profiles and favorite lists. The project is modular and extensible, making it suitable for educational and hobby purposes.
+SenFlix is a web-based movie management application built with Flask and SQLAlchemy. It allows users to browse, rate, and share movies, as well as create personal profiles and favorite lists.
 
 ## Table of Contents
+- [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Installation](#installation)
 - [Project Structure](#project-structure)
-- [Core Contracts](#core-contracts)
-- [Database Manager Methods](#database-manager-methods)
-- [Templates/Pages](#templatespages)
+- [Database Schema](#database-schema)
+- [Core Components](#core-components)
+- [API Endpoints](#api-endpoints)
+- [Main Routes](#main-routes)
+
+## Features
+- User profiles with avatars
+- Movie browsing by category and platform
+- Personal watchlists and favorites
+- Movie ratings and comments
+- Movie recommendations based on user preferences
+- OMDB API integration for movie metadata
+- Responsive UI for all devices
 
 ## Tech Stack
 - **Python 3.8+**
-- **Flask** (Web Framework)
-- **Flask-SQLAlchemy** (ORM)
-- **Jinja2** (Templating)
-- **SQLite** (Default Database)
-- **HTML/CSS** (Frontend)
+- **Flask** - Web framework
+- **Flask-SQLAlchemy** - ORM for database access
+- **Flask-Login** - User session management
+- **SQLite** - Database
+- **Jinja2** - HTML templating
+- **OMDB API** - External movie data source
+- **HTML/CSS/JavaScript** - Frontend
 
 ## Installation
 1. **Clone the repository:**
    ```bash
-   git clone <repository-url>
-   cd SenFlix
+   git clone https://github.com/yourusername/senflix.git
+   cd senflix
    ```
-2. **Create a virtual environment (recommended):**
+2. **Create a virtual environment:**
    ```bash
-   python3 -m venv venv
-   source venv/bin/activate
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 3. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
-4. **Run the application:**
+4. **Set up environment variables:**
+   Create a `.env` file with:
+   ```
+   SECRET_KEY=your_secret_key
+   OMDB_API_KEY=your_omdb_api_key
+   ```
+5. **Run the application:**
    ```bash
    flask run
+   # Or
+   python wsgi.py
    ```
+6. **Access the application:**
+   Open your browser and go to http://localhost:5000
 
 ## Project Structure
 ```
 SenFlix/
-  ├── app.py                # Main Flask application
-  ├── datamanager/
-  │     ├── interface.py    # Data models & contracts
-  │     └── db_manager.py   # Database manager implementation
-  ├── templates/            # Jinja2 HTML templates
-  ├── static/               # Static files (CSS, images)
-  └── README.md
+├── app.py                 # Main Flask application
+├── wsgi.py                # WSGI entry point for production
+├── requirements.txt       # Python dependencies
+├── data/
+│   ├── senflix.sqlite     # SQLite database
+│   └── db_schema.png      # Database schema diagram
+├── datamanager/
+│   ├── __init__.py        # Package initialization
+│   ├── interface.py       # Database models and interfaces
+│   ├── db_manager.py      # Database operations implementation
+│   └── omdb_manager.py    # OMDB API client
+├── static/
+│   ├── css/               # Stylesheets
+│   ├── js/                # JavaScript
+│   ├── avatars/           # User avatar images
+│   └── movies/            # Movie poster images
+├── templates/
+│   ├── base.html          # Base template
+│   ├── movies.html        # Movie listing page
+│   ├── movie_detail.html  # Single movie view
+│   └── ...                # Other templates
+└── tests/                 # Test suite
 ```
 
 ## Database Schema
 
-The following diagram illustrates the database structure:
+The database uses SQLAlchemy ORM with the following entity relationships:
 
-![Database Schema](db_schema.png)
+![Database Schema](data/db_schema.png)
 
-## Core Contracts (interface.py)
-| Name                | Type        | Description                                                      |
-|---------------------|-------------|------------------------------------------------------------------|
-| DataManagerInterface| ABC         | Abstract base for data operations (CRUD for users, movies, etc.) |
-| db                  | SQLAlchemy  | SQLAlchemy DB instance                                           |
-| logger              | Logger      | Logging instance                                                 |
-| Avatar              | Model       | User avatar: id, name, description, image                        |
-| User                | Model       | User: id, name, whatsapp_number, avatar_id, favorites            |
-| Movie               | Model       | Movie: id, name, platforms, categories, favorites                |
-| UserFavorite        | Model       | User's favorite: user_id, movie_id, rating, watchlist            |
-| StreamingPlatform   | Model       | Streaming platform: id, name                                     |
-| Category            | Model       | Category/genre: id, name, img                                    |
+### Core Entities:
 
-## Database Manager Methods (db_manager.py)
-| Method                                 | Description                                           |
-|----------------------------------------|-------------------------------------------------------|
-| __init__                               | Initialize manager with shared DB instance            |
-| init_app(app)                          | Setup DB config with Flask app                        |
-| _get(model, **filters)                 | Get single object by filter                          |
-| _all(model)                            | Get all objects of a model                            |
-| get_all_users()                        | Return all users                                      |
-| get_user_by_id(user_id)                | Return user data as dict                              |
-| add_user(name, whatsapp_number, avatar_id) | Add new user                                    |
-| get_all_movies()                       | Return all movies                                     |
-| get_movie_data(movie_id)               | Return movie data as dict                             |
-| add_movie(data)                        | Add new movie                                         |
-| update_movie(mid, data)                | Update movie                                          |
-| delete_movie(mid)                      | Delete movie                                          |
-| upsert_favorite(user_id, movie_id, ...) | Add or update favorite                              |
-| remove_favorite(user_id, movie_id)     | Remove favorite                                       |
-| get_user_favorites(user_id)            | Return user's favorites                               |
-| get_movie_platforms(movie_id)          | Return movie's platforms                              |
-| get_movie_categories(movie_id)         | Return movie's categories                             |
-| get_movies_by_category(cid)            | Return movies by category                             |
-| get_all_categories_with_movies()       | Return categories with movies                         |
-| get_all_platforms()                    | Return all platforms                                  |
-| get_all_categories()                   | Return all categories                                 |
-| get_movies_by_platform(platform_id)    | Return movies by platform                             |
-| get_top_rated_movies(limit=10)         | Return top rated movies                               |
-| get_recent_commented_movies(limit=10)  | Return most recently commented movies                 |
-| get_popular_movies(limit=10)           | Return most popular movies                            |
-| get_friends_favorites(user_id, limit=10)| Return friends' favorites                           |
-| add_rating(user_id, movie_id, rating, comment) | Add rating and comment                        |
-| get_movie_ratings(movie_id)            | Return all ratings for a movie                        |
-| get_movie_average_rating(movie_id)     | Return average rating for a movie                     |
-| add_favorite(user_id, movie_id, ...)   | Implement interface method for favorite               |
-| get_user_data(user_id)                 | Return all user data including favorites              |
+#### User
+- Represents application users
+- Has avatar, favorites, and ratings relationships
 
-## Templates/Pages (app.py)
-| Template/Page         | Description                      |
-|----------------------|----------------------------------|
-| user_selection.html  | User selection page               |
-| movies.html          | Movie overview/listing            |
-| movie_detail.html    | Movie detail page                 |
-| profile.html         | User profile & stats              |
-| search_results.html  | Search results                    |
-| users.html           | All users overview                |
-| user_movies.html     | Movies for a specific user        |
-| add_movie.html       | Add a new movie                   |
-| update_movie.html    | Edit a movie                      |
-| category_detail.html | Category detail page              |
+#### Movie
+- Represents movies in the system
+- Related to categories, platforms, user favorites, and ratings
 
----
+#### UserFavorite
+- Junction table between User and Movie
+- Stores watched status, watchlist, favorite, rating, and comments
+
+#### Category
+- Represents movie genres/categories
+- Many-to-many relationship with movies
+
+#### StreamingPlatform
+- Represents streaming providers
+- Many-to-many relationship with movies
+
+#### MovieOMDB
+- Stores external movie data from OMDB API
+- One-to-one relationship with Movie
+
+## Core Components
+
+### Data Manager
+The `SQLiteDataManager` class provides methods to:
+- Manage users (create, retrieve)
+- Manage movies (create, update, delete)
+- Handle user favorites, ratings, and comments
+- Query movies by various criteria (category, platform, popularity)
+- Integrate with OMDB API for external movie data
+
+### Interface Models
+The `interface.py` file defines the SQLAlchemy models and their relationships:
+
+| Model             | Description                                           |
+|-------------------|-------------------------------------------------------|
+| User              | Application users with profile information            |
+| Movie             | Core movie data                                       |
+| UserFavorite      | User's relationship with movies                       |
+| Category          | Movie genres/categories                               |
+| StreamingPlatform | Streaming providers                                   |
+| Avatar            | User avatar images and info                           |
+| MovieOMDB         | External movie data from OMDB                         |
+| Rating            | User movie ratings                                    |
+
+### OMDB Manager
+The `OMDBManager` handles:
+- Fetching movie data from OMDB API
+- Caching responses in the database
+- Downloading and storing movie posters
+
+## API Endpoints
+
+| Endpoint                    | Method | Description                               |
+|-----------------------------|--------|-------------------------------------------|
+| `/api/categories`           | GET    | Get all movie categories                  |
+| `/toggle_watchlist/:id`     | POST   | Add/remove movie from watchlist           |
+| `/toggle_watched/:id`       | POST   | Mark movie as watched/unwatched           |
+| `/toggle_favorite/:id`      | POST   | Add/remove movie from favorites           |
+| `/rate_movie`               | POST   | Save movie rating and comment             |
+| `/get_movie_rating/:id`     | GET    | Get user's rating for a movie             |
+| `/search_omdb`              | GET    | Search movies via OMDB API                |
+
+## Main Routes
+
+| Route                       | Description                                       |
+|-----------------------------|---------------------------------------------------|
+| `/`                         | User selection screen                             |
+| `/movies`                   | Main movie browsing page                          |
+| `/movie/:id`                | Detailed view of a single movie                   |
+| `/users`                    | List of all users                                 |
+| `/users/:id`                | User profile page                                 |
+| `/category/:id`             | Movies in a specific category                     |
+| `/search`                   | Search results page                               |
+| `/top-rated`                | Top-rated movies                                  |
+| `/community-comments`       | Recent user comments                              |
+| `/avatar/:id`               | Avatar-specific recommendations                   |
 
 ## License
 MIT License
+
+## Contributors
+If you'd like to contribute to SenFlix, please fork the repository and create a pull request.

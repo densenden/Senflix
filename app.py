@@ -12,15 +12,13 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
 
-# Verbessern des URL-Handlings für Serverless-Umgebungen wie Vercel
+# Improve URL handling for serverless environments like Vercel
 app.config['PREFERRED_URL_SCHEME'] = 'https'
 
 # Database setup
 db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data/senflix.sqlite'))
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# print(f"[DB DEBUG] SQLALCHEMY_DATABASE_URI: {app.config['SQLALCHEMY_DATABASE_URI']}") # Removed debug print
 
 data_manager = SQLiteDataManager()
 data_manager.init_app(app)
@@ -63,12 +61,8 @@ def ajax_route(f):
             result = f(*args, **kwargs)
             return jsonify({'success': result})
         except Exception as e:
-            # Log the exception for debugging if needed
-            # logger.error(f"AJAX Error in {f.__name__}: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 400
     return wrapped
-
-# --- Helper Functions ---
 
 # --- Routes ---
 
@@ -77,8 +71,6 @@ def user_selection():
     """Display user selection screen."""
     users = User.query.all()
     available_avatars = Avatar.query.all()
-    # print(f"[DEBUG] users: {users}") # Removed debug print
-    # print(f"[DEBUG] available_avatars: {available_avatars}") # Removed debug print
     return render_template('user_selection.html', users=users, available_avatars=available_avatars, current_user=current_user)
 
 @app.route('/create_user', methods=['POST'])
@@ -1095,5 +1087,7 @@ def avatar_detail(avatar_id):
         flash('Error loading avatar details', 'error')
         return redirect(url_for('movies'))
 
-if __name__=='__main__':
-    app.run(debug=True, port=5003)
+if __name__ == "__main__":
+    # For development only
+    # In production, use gunicorn or similar WSGI server
+    app.run(host='0.0.0.0', port=5002)

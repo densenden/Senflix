@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from datamanager.db_manager import SQLiteDataManager
 from datamanager.interface import User, Movie, Category, StreamingPlatform, UserFavorite, MovieOMDB, db
 
-# Füge das Hauptverzeichnis zum Python-Pfad hinzu
+# Add the main directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 @pytest.fixture
@@ -147,7 +147,7 @@ def test_add_favorite(db_manager, test_user, test_movie, app):
 
 def test_get_user_favorites(db_manager, test_user, test_movie, app):
     with app.app_context():
-        # Füge einen Favoriten hinzu
+        # Add a favorite
         db_manager.add_favorite(
             test_user["id"],
             test_movie["id"],
@@ -166,7 +166,7 @@ def test_get_user_favorites(db_manager, test_user, test_movie, app):
 
 def test_get_movie_ratings(db_manager, test_user, test_movie, app):
     with app.app_context():
-        # Füge eine Bewertung hinzu
+        # Add a rating
         db_manager.add_rating(
             test_user["id"],
             test_movie["id"],
@@ -183,10 +183,10 @@ def test_get_movie_ratings(db_manager, test_user, test_movie, app):
 
 def test_get_movie_average_rating(db_manager, test_user, test_movie, app):
     with app.app_context():
-        # Füge mehrere Bewertungen hinzu
+        # Add multiple ratings
         db_manager.add_rating(test_user["id"], test_movie["id"], rating=4.0)
         
-        # Erstelle einen zweiten Benutzer
+        # Create a second user
         user2_data = {
             'username': 'Test User 2',
             'email': 'test2@example.com',
@@ -195,13 +195,13 @@ def test_get_movie_average_rating(db_manager, test_user, test_movie, app):
         user2 = db_manager.add_user(user2_data)
         db_manager.add_rating(user2["id"], test_movie["id"], rating=5.0)
         
-        # Teste die durchschnittliche Bewertung
+        # Test the average rating
         avg_rating = db_manager.get_movie_average_rating(test_movie["id"])
         assert avg_rating == 4.5  # (4.0 + 5.0) / 2
 
 def test_get_top_rated_movies(db_manager, test_user, test_movie, app):
     with app.app_context():
-        # Füge eine Bewertung hinzu
+        # Add a rating
         db_manager.add_rating(test_user["id"], test_movie["id"], rating=5.0)
         
         top_movies = db_manager.get_top_rated_movies(limit=1)
@@ -213,7 +213,7 @@ def test_get_top_rated_movies(db_manager, test_user, test_movie, app):
 
 def test_get_recent_commented_movies(db_manager, test_user, test_movie, app):
     with app.app_context():
-        # Füge einen Kommentar hinzu
+        # Add a comment
         db_manager.add_favorite(
             test_user["id"],
             test_movie["id"],
@@ -239,39 +239,39 @@ def test_get_user_data(db_manager, app, test_user):
 
 def test_get_movies_by_category(db_manager, test_movie, test_category, app):
     with app.app_context():
-        # Füge den Film zur Kategorie hinzu
+        # Add the movie to the category
         movie = db.session.get(Movie, test_movie["id"])
         category = db.session.get(Category, test_category["id"])
         movie.categories.append(category)
         db.session.commit()
 
-        # Hole die Filme für die Kategorie
+        # Get the movies for the category
         movies = db_manager.get_movies_by_category(test_category["id"])
         assert len(movies) == 1
         assert movies[0]["id"] == test_movie["id"]
 
 def test_get_movies_by_platform(db_manager, test_movie, test_platform, app):
     with app.app_context():
-        # Füge den Film zur Plattform hinzu
+        # Add the movie to the platform
         movie = db.session.get(Movie, test_movie["id"])
         platform = db.session.get(StreamingPlatform, test_platform["id"])
         movie.streaming_platforms.append(platform)
         db.session.commit()
 
-        # Hole die Filme für die Plattform
+        # Get the movies for the platform
         movies = db_manager.get_movies_by_platform(test_platform["id"])
         assert len(movies) == 1
         assert movies[0]["id"] == test_movie["id"]
 
 def test_get_all_categories_with_movies(db_manager, test_movie, test_category, app):
     with app.app_context():
-        # Füge den Film zur Kategorie hinzu
+        # Add the movie to the category
         movie = db.session.get(Movie, test_movie["id"])
         category = db.session.get(Category, test_category["id"])
         movie.categories.append(category)
         db.session.commit()
 
-        # Hole alle Kategorien mit Filmen
+        # Get all categories with movies
         categories = db_manager.get_all_categories_with_movies()
         assert len(categories) == 1
         assert categories[0]["id"] == test_category["id"]

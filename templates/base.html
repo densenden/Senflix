@@ -7,9 +7,20 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Debug-Info ausblenden, sofern nicht über URL aktiviert */
+        /* Hide debug info unless activated via URL */
         .movie-debug-info {
             display: none;
+        }
+        /* Show when debug mode is active */
+        .debug-active .movie-debug-info {
+            display: block;
+            margin-top: 10px;
+            padding: 5px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            color: #555;
+            font-size: 0.85rem;
         }
         /* 3D-Effekt Stile für alle Filmkarten */
         .card-container {
